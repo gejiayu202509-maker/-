@@ -1045,9 +1045,14 @@ async function handleUpload(event) {
 }
 
 function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  const headers = splitCsvLine(lines[0]);
-  return lines.slice(1).map((line) => {
+  const rawLines = text.trim().split(/\r?\n/).filter(Boolean);
+  const headerIndex = rawLines.findIndex((line) => {
+    const columns = splitCsvLine(line).map((column) => column.replace(/^\uFEFF/, "").trim());
+    return columns.includes("证券代码") || columns.includes("股票代码");
+  });
+  const lines = headerIndex >= 0 ? rawLines.slice(headerIndex) : rawLines;
+  const headers = splitCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, "").trim());
+  return lines.slice(1).filter((line) => splitCsvLine(line).some(hasContent)).map((line) => {
     const values = splitCsvLine(line);
     const row = {};
     headers.forEach((header, index) => {

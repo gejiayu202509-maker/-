@@ -194,8 +194,27 @@ h3 {
   line-height: 1.4;
 }
 
+.upload-side {
+  display: grid;
+  gap: 10px;
+}
+
+.upload-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .template-link {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
   color: var(--green);
+  background: #fff;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;

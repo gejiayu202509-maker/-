@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>摘帽咯上传格式示例</title>
+    <link rel="stylesheet" href="./styles.css?v=20260611v3" />
+    <style>
+      .format-page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 24px 44px;
+      }
+
+      .format-page .panel {
+        margin-top: 18px;
+      }
+
+      .format-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .format-table {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .format-table table {
+        min-width: 1120px;
+      }
+
+      .format-page li {
+        margin: 8px 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .code-pill {
+        display: inline-flex;
+        border-radius: 6px;
+        padding: 2px 6px;
+        background: var(--soft);
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+      }
+
+      @media (max-width: 760px) {
+        .format-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="format-page">
+      <p class="eyebrow">上传格式示例</p>
+      <h1>ST/*ST 股票池 CSV 模板</h1>
+      <p class="subtitle">
+        v0.2 先稳定支持 CSV / JSON。Excel 可以先另存为 CSV 后上传。系统会自动寻找包含
+        <span class="code-pill">证券代码</span> 或 <span class="code-pill">股票代码</span>
+        的表头行，所以前面有标题行也可以识别。
+      </p>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">最小要求</p>
+          <h2>至少要有这 6 列</h2>
+        </div>
+        <div class="format-grid">
+          <div class="info-block">
+            <h3>必须列</h3>
+            <ul>
+              <li><span class="code-pill">证券代码</span> 或 <span class="code-pill">股票代码</span>，例如 603580.SH。</li>
+              <li><span class="code-pill">证券名称</span> 或 <span class="code-pill">股票简称</span>，保留 ST / *ST 前缀。</li>
+              <li><span class="code-pill">ST or *ST</span> 或 <span class="code-pill">当前状态</span>，填 ST 或 *ST。</li>
+              <li><span class="code-pill">最新被ST/*ST时间</span>，可保留 ST、*ST、叠加ST 标注。</li>
+              <li><span class="code-pill">ST原因</span>，没有就填“无”。</li>
+              <li><span class="code-pill">*ST原因</span>，没有就填“无”。</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>建议列</h3>
+            <ul>
+              <li>财务列：营业收入、扣除后营业收入、利润总额、净利润、扣非净利润、净资产。</li>
+              <li>审计列：审计意见、内控意见。</li>
+              <li>市场列：股价、市值、所属行业。</li>
+              <li>辅助列：当前阶段、备注。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">为什么会全是待复核</p>
+          <h2>常见原因</h2>
+        </div>
+        <ul>
+          <li>只有代码和简称，没有 ST原因 / *ST原因，系统不知道风险来自哪里。</li>
+          <li>原因写得太泛，比如“财务问题”“违规问题”，无法判断是净资产、收入、审计、内控还是重大违法。</li>
+          <li>财务列缺失，系统只能按原因文本粗判，不能识别“财务硬指标修复”。</li>
+          <li>涉及重大违法、重整、资金占用、违规担保、持续经营不确定性时，系统会保守标记人工复核。</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading row-heading">
+          <div>
+            <p class="eyebrow">示例</p>
+            <h2>推荐表头顺序</h2>
+          </div>
+          <div class="upload-links">
+            <a class="template-link" href="./data/st_pool_upload_example.csv" download>下载示例 CSV</a>
+            <a class="template-link" href="./data/st_pool_upload_template.csv" download>下载空模板</a>
+            <a class="template-link" href="./index.html">返回工作台</a>
+          </div>
+        </div>
+        <div class="format-table">
+          <table>
+            <thead>
+              <tr>
+                <th>证券代码</th>
+                <th>证券名称</th>
+                <th>ST or *ST</th>
+                <th>最新被ST/*ST时间</th>
+                <th>ST原因</th>
+                <th>*ST原因</th>
+                <th>当前阶段</th>
+                <th>审计意见</th>
+                <th>内控意见</th>
+                <th>营业收入</th>
+                <th>扣除后营业收入</th>
+                <th>利润总额</th>
+                <th>净利润</th>
+                <th>扣非净利润</th>
+                <th>净资产</th>
+                <th>股价</th>
+                <th>市值</th>
+                <th>所属行业</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>603580.SH</td>
+                <td>*ST艾艾</td>
+                <td>*ST</td>
+                <td>*ST：2025年5月6日</td>
+                <td>无</td>
+                <td>2024年度扣非前后净利润为负且扣除后营业收入低于3亿元</td>
+                <td>申请撤销中</td>
+                <td>标准无保留</td>
+                <td>标准无保留</td>
+                <td>3.16</td>
+                <td>3.16</td>
+                <td>0.01</td>
+                <td>0.01</td>
+                <td>0.01</td>
+                <td>4.52</td>
+                <td>22.46</td>
+                <td>29.4</td>
+                <td>橡胶和塑料制品业</td>
+              </tr>
+              <tr>
+                <td>600476.SH</td>
+                <td>*ST湘邮</td>
+                <td>*ST</td>
+                <td>ST：2026年4月29日；*ST：2026年4月29日</td>
+                <td>连续三年亏损且持续经营能力存在不确定性</td>
+                <td>2025年末经审计净资产为负</td>
+                <td>无</td>
+                <td>带强调事项段的无保留意见</td>
+                <td>待复核</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>-4.45</td>
+                <td>10.84</td>
+                <td>17.5</td>
+                <td>软件和信息技术服务业</td>
+              </tr>
+              <tr>
+                <td>688496.SH</td>
+                <td>*ST清越</td>
+                <td>*ST</td>
+                <td>ST：2026年4月30日；*ST：2026年5月12日</td>
+                <td>2025年度财务报告内部控制被出具否定意见</td>
+                <td>可能触及重大违法强制退市情形</td>
+                <td>行政处罚待落地</td>
+                <td>保留意见</td>
+                <td>否定意见</td>
+                <td>6.69</td>
+                <td></td>
+                <td></td>
+                <td>-1.24</td>
+                <td></td>
+                <td>10.34</td>
+                <td>1.28</td>
+                <td>5.76</td>
+                <td>计算机、通信和其他电子设备制造业</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

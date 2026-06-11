@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>摘帽咯 v0.2 工作台</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260611v3" />
   </head>
   <body>
     <header class="topbar">
@@ -30,12 +30,17 @@
             上传后系统会自动识别分层、交易所板块、基础标签、原因质量和初步去向。
           </p>
         </div>
-        <label class="upload-box">
-          <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.json" />
-          <span>上传股票池 Excel / CSV / JSON</span>
-          <small id="uploadStatus">当前使用：A股ST股统计_原始快照_2026-06-05.xlsx 抽取数据</small>
-          <a class="template-link" href="./data/st_pool_upload_template.csv" download>下载 v0.2 CSV 模板</a>
-        </label>
+        <div class="upload-side">
+          <label class="upload-box">
+            <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.json" />
+            <span>上传股票池 Excel / CSV / JSON</span>
+            <small id="uploadStatus">当前使用：A股ST股统计_原始快照_2026-06-05.xlsx 抽取数据</small>
+          </label>
+          <div class="upload-links">
+            <a class="template-link" href="./upload-format.html" target="_blank">查看上传格式示例</a>
+            <a class="template-link" href="./data/st_pool_upload_template.csv" download>下载 v0.2 CSV 模板</a>
+          </div>
+        </div>
       </section>
 
       <section class="kpi-grid" id="kpiGrid" aria-label="股票池概览"></section>
@@ -114,7 +119,7 @@
       </section>
     </main>
 
-    <script src="./data/current_pool.js?v=20260611v2"></script>
-    <script src="./main.js?v=20260611v2"></script>
+    <script src="./data/current_pool.js?v=20260611v3"></script>
+    <script src="./main.js?v=20260611v3"></script>
   </body>
 </html>
