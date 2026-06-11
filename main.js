@@ -245,6 +245,8 @@ const els = {
   reportPreview: document.querySelector("#reportPreview"),
   fileInput: document.querySelector("#fileInput"),
   uploadStatus: document.querySelector("#uploadStatus"),
+  downloadTemplate: document.querySelector("#downloadTemplateBtn"),
+  downloadExample: document.querySelector("#downloadExampleBtn"),
   printTop: document.querySelector("#printReportBtn"),
   printBottom: document.querySelector("#printReportBtnBottom"),
 };
@@ -283,6 +285,8 @@ function bindEvents() {
     renderTable();
   });
   els.fileInput.addEventListener("change", handleUpload);
+  els.downloadTemplate?.addEventListener("click", downloadUploadTemplate);
+  els.downloadExample?.addEventListener("click", downloadUploadExample);
   els.printTop.addEventListener("click", () => window.print());
   els.printBottom.addEventListener("click", () => window.print());
 }
@@ -1017,6 +1021,116 @@ function revenueThreshold(board) {
 function fieldStatus(row) {
   const filled = templateFields.filter((field) => hasContent(row[field] || row[field.replace("股票", "证券")])).length;
   return `v0.2 模板字段已识别 ${filled}/${templateFields.length} 个；字段越完整，自动识别越稳定。`;
+}
+
+function downloadUploadTemplate() {
+  downloadCsv("摘帽咯_ST股票池上传模板_v0.2.csv", [templateFields]);
+}
+
+function downloadUploadExample() {
+  const rows = [
+    templateFields,
+    [
+      "603580.SH",
+      "*ST艾艾",
+      "*ST",
+      "*ST：2025年5月6日",
+      "无",
+      "2024年度扣非前后净利润为负且扣除后营业收入低于3亿元",
+      "上交所",
+      "主板",
+      "申请撤销中",
+      "标准无保留",
+      "标准无保留",
+      "3.16",
+      "3.16",
+      "0.01",
+      "0.01",
+      "0.01",
+      "4.52",
+      "",
+      "",
+      "",
+      "22.46",
+      "29.4",
+      "橡胶和塑料制品业",
+      "2026年6月11日",
+      "示例：财务硬指标修复样本",
+    ],
+    [
+      "600476.SH",
+      "*ST湘邮",
+      "*ST",
+      "ST：2026年4月29日；*ST：2026年4月29日",
+      "连续三年亏损且持续经营能力存在不确定性",
+      "2025年末经审计净资产为负",
+      "上交所",
+      "主板",
+      "无",
+      "带强调事项段的无保留意见",
+      "待复核",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "-4.45",
+      "",
+      "",
+      "",
+      "10.84",
+      "17.5",
+      "软件和信息技术服务业",
+      "2026年6月11日",
+      "示例：撤销条件未闭环样本",
+    ],
+    [
+      "688496.SH",
+      "*ST清越",
+      "*ST",
+      "ST：2026年4月30日；*ST：2026年5月12日",
+      "2025年度财务报告内部控制被出具否定意见",
+      "可能触及重大违法强制退市情形",
+      "上交所",
+      "科创板",
+      "行政处罚待落地",
+      "保留意见",
+      "否定意见",
+      "6.69",
+      "",
+      "",
+      "-1.24",
+      "",
+      "10.34",
+      "",
+      "",
+      "",
+      "1.28",
+      "5.76",
+      "计算机、通信和其他电子设备制造业",
+      "2026年6月11日",
+      "示例：重大违法风险观察样本",
+    ],
+  ];
+  downloadCsv("摘帽咯_ST股票池上传示例_v0.2.csv", rows);
+}
+
+function downloadCsv(filename, rows) {
+  const content = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 async function handleUpload(event) {

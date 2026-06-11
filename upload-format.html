@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>摘帽咯上传格式示例</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611v3" />
+    <link rel="stylesheet" href="./styles.css?v=20260611v4" />
     <style>
       .format-page {
         max-width: 1180px;
@@ -114,8 +114,8 @@
             <h2>推荐表头顺序</h2>
           </div>
           <div class="upload-links">
-            <a class="template-link" href="./data/st_pool_upload_example.csv" download>下载示例 CSV</a>
-            <a class="template-link" href="./data/st_pool_upload_template.csv" download>下载空模板</a>
+            <button class="template-link template-button" id="formatDownloadExample" type="button">下载示例 CSV</button>
+            <button class="template-link template-button" id="formatDownloadTemplate" type="button">下载空模板</button>
             <a class="template-link" href="./index.html">返回工作台</a>
           </div>
         </div>
@@ -209,5 +209,105 @@
         </div>
       </section>
     </main>
+    <script>
+      const fields = [
+        "股票代码",
+        "股票简称",
+        "当前状态",
+        "最新被ST/*ST时间",
+        "ST原因",
+        "*ST原因",
+        "所属交易所",
+        "所属板块",
+        "当前阶段",
+        "审计意见",
+        "内控意见",
+        "营业收入",
+        "扣除后营业收入",
+        "利润总额",
+        "净利润",
+        "扣非净利润",
+        "净资产",
+        "总资产",
+        "总负债",
+        "资产负债率",
+        "股价",
+        "市值",
+        "所属行业",
+        "数据快照日期",
+        "备注",
+      ];
+      const exampleRows = [
+        fields,
+        [
+          "603580.SH",
+          "*ST艾艾",
+          "*ST",
+          "*ST：2025年5月6日",
+          "无",
+          "2024年度扣非前后净利润为负且扣除后营业收入低于3亿元",
+          "上交所",
+          "主板",
+          "申请撤销中",
+          "标准无保留",
+          "标准无保留",
+          "3.16",
+          "3.16",
+          "0.01",
+          "0.01",
+          "0.01",
+          "4.52",
+          "",
+          "",
+          "",
+          "22.46",
+          "29.4",
+          "橡胶和塑料制品业",
+          "2026年6月11日",
+          "示例：财务硬指标修复样本",
+        ],
+        [
+          "600476.SH",
+          "*ST湘邮",
+          "*ST",
+          "ST：2026年4月29日；*ST：2026年4月29日",
+          "连续三年亏损且持续经营能力存在不确定性",
+          "2025年末经审计净资产为负",
+          "上交所",
+          "主板",
+          "无",
+          "带强调事项段的无保留意见",
+          "待复核",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "-4.45",
+          "",
+          "",
+          "",
+          "10.84",
+          "17.5",
+          "软件和信息技术服务业",
+          "2026年6月11日",
+          "示例：撤销条件未闭环样本",
+        ],
+      ];
+      document.querySelector("#formatDownloadTemplate").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传模板_v0.2.csv", [fields]));
+      document.querySelector("#formatDownloadExample").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传示例_v0.2.csv", exampleRows));
+      function downloadCsv(filename, rows) {
+        const content = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+        const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+    </script>
   </body>
 </html>

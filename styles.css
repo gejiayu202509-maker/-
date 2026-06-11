@@ -220,6 +220,11 @@ h3 {
   text-decoration: none;
 }
 
+.template-button {
+  font: inherit;
+  cursor: pointer;
+}
+
 .template-link:hover {
   text-decoration: underline;
 }
