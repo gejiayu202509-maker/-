@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>摘帽咯 v0.1 工作台</title>
+    <title>摘帽咯 v0.2 工作台</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">特殊机会投资研究工具 · v0.1</p>
+        <p class="eyebrow">特殊机会投资研究工具 · v0.2</p>
         <h1>摘帽咯 ST/*ST 摘星摘帽筛选工作台</h1>
         <p class="subtitle">
-          以 Excel 为临时数据库，把规则映射、公告证据、四联判断、市场行为和历史相似案例串成一条可复核的研究流程。
+          以股票池文件为临时数据库，先完成 ST/*ST 分层、基础标签识别、原因补齐状态和初步分流，再逐步接入公告证据、市场行为和历史相似案例。
         </p>
       </div>
       <div class="topbar-actions">
@@ -26,13 +26,15 @@
         <div>
           <h2 id="uploadTitle">数据库入口</h2>
           <p>
-            v0.1 先读取本地台账中的 2026-06-05 ST/*ST 股票池。上传入口保留给后续 Excel 自动解析，目前可直接试用 JSON/CSV。
+            v0.2 先稳定读取 CSV / JSON 股票池。Excel 可先按模板另存为 CSV 上传；XLSX 原文件解析后续再接入。
+            上传后系统会自动识别分层、交易所板块、基础标签、原因质量和初步去向。
           </p>
         </div>
         <label class="upload-box">
           <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.json" />
           <span>上传股票池 Excel / CSV / JSON</span>
           <small id="uploadStatus">当前使用：A股ST股统计_原始快照_2026-06-05.xlsx 抽取数据</small>
+          <a class="template-link" href="./data/st_pool_upload_template.csv" download>下载 v0.2 CSV 模板</a>
         </label>
       </section>
 
@@ -40,8 +42,8 @@
 
       <section class="workflow-band" aria-labelledby="workflowTitle">
         <div class="section-heading">
-          <p class="eyebrow">筛选逻辑</p>
-          <h2 id="workflowTitle">从全市场 ST 池到高潜力候选</h2>
+          <p class="eyebrow">基础标签层</p>
+          <h2 id="workflowTitle">从上传股票池到可研究样本</h2>
         </div>
         <div class="funnel" id="funnel"></div>
       </section>
@@ -57,10 +59,10 @@
               <input id="searchInput" type="search" placeholder="输入代码或简称" />
               <select id="poolFilter">
                 <option value="all">全部分类</option>
-                <option value="A">A 类重点</option>
-                <option value="B">B 类观察</option>
-                <option value="C">C 类谨慎</option>
-                <option value="D">D 类排除</option>
+                <option value="observe">基础观察池</option>
+                <option value="review">待人工复核池</option>
+                <option value="risk">风险池</option>
+                <option value="exclude">高风险排除池</option>
               </select>
               <select id="strategyFilter">
                 <option value="all">全部策略标签</option>
@@ -78,9 +80,9 @@
                   <th>代码</th>
                   <th>简称</th>
                   <th>分层</th>
-                  <th>规则类型</th>
-                  <th>策略标签</th>
-                  <th>初筛</th>
+                  <th>基础标签</th>
+                  <th>原因质量</th>
+                  <th>初步分流</th>
                 </tr>
               </thead>
               <tbody id="poolTable"></tbody>
@@ -112,7 +114,7 @@
       </section>
     </main>
 
-    <script src="./data/current_pool.js?v=20260609b"></script>
-    <script src="./main.js?v=20260609b"></script>
+    <script src="./data/current_pool.js?v=20260611v2"></script>
+    <script src="./main.js?v=20260611v2"></script>
   </body>
 </html>
