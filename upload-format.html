@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>摘帽咯上传格式示例</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611v4" />
+    <link rel="stylesheet" href="./styles.css?v=20260611v5" />
     <style>
       .format-page {
         max-width: 1180px;
@@ -60,7 +60,7 @@
       <p class="eyebrow">上传格式示例</p>
       <h1>ST/*ST 股票池 CSV 模板</h1>
       <p class="subtitle">
-        v0.2 先稳定支持 CSV / JSON。Excel 可以先另存为 CSV 后上传。系统会自动寻找包含
+        v0.2.1 先稳定支持 CSV / JSON。Excel 可以先另存为 CSV 后上传。系统会自动寻找包含
         <span class="code-pill">证券代码</span> 或 <span class="code-pill">股票代码</span>
         的表头行，所以前面有标题行也可以识别。
       </p>
@@ -294,8 +294,8 @@
           "示例：撤销条件未闭环样本",
         ],
       ];
-      document.querySelector("#formatDownloadTemplate").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传模板_v0.2.csv", [fields]));
-      document.querySelector("#formatDownloadExample").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传示例_v0.2.csv", exampleRows));
+      document.querySelector("#formatDownloadTemplate").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传模板_v0.2.1.csv", [fields]));
+      document.querySelector("#formatDownloadExample").addEventListener("click", () => downloadCsv("摘帽咯_ST股票池上传示例_v0.2.1.csv", exampleRows));
       function downloadCsv(filename, rows) {
         const content = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
         const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8" });

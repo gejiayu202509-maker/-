@@ -225,6 +225,7 @@ const flowLabels = {
   review: "待人工复核池",
   risk: "风险池",
   exclude: "高风险排除池",
+  archive: "非当前样本已排除",
 };
 
 const deepSampleFlow = {
@@ -338,8 +339,14 @@ function applyFilters() {
     const code = String(row["证券代码"] || "");
     const name = String(row["证券名称"] || "");
     const profile = getProfile(code, row);
+    const isCurrent = profile.analysis.sampleType?.isCurrent;
     const textMatch = !keyword || `${code} ${name}`.toLowerCase().includes(keyword);
-    const poolMatch = pool === "all" || profile.flowCode === pool;
+    const poolMatch =
+      pool === "all"
+        ? isCurrent
+        : pool === "archive"
+          ? !isCurrent
+          : isCurrent && profile.flowCode === pool;
     const strategyMatch =
       strategy === "all" || (profile.strategyTags || []).some((item) => item[0] === strategy || item === strategy);
     return textMatch && poolMatch && strategyMatch;
@@ -349,20 +356,26 @@ function applyFilters() {
 
 function renderKpis() {
   const total = state.pool.length;
-  const pureSt = state.pool.filter((row) => row["状态分层"] === "纯ST").length;
-  const pureStar = state.pool.filter((row) => row["状态分层"] === "纯*ST").length;
-  const stacked = state.pool.filter((row) => row["状态分层"] === "ST+*ST").length;
-  const financial = state.pool.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "财务硬指标修复" && tag.status !== "未命中")).length;
-  const review = state.pool.filter((row) => getAnalysis(row).flowCode === "review").length;
-  const majorRisk = state.pool.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "重大违法风险" && tag.status !== "未命中")).length;
+  const activeRows = state.pool.filter((row) => getAnalysis(row).sampleType.isCurrent);
+  const archived = total - activeRows.length;
+  const pureSt = activeRows.filter((row) => row["状态分层"] === "纯ST").length;
+  const pureStar = activeRows.filter((row) => row["状态分层"] === "纯*ST").length;
+  const stacked = activeRows.filter((row) => row["状态分层"] === "ST+*ST").length;
+  const financial = activeRows.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "财务硬指标修复" && tag.status !== "未命中")).length;
+  const review = activeRows.filter((row) => getAnalysis(row).needsReview).length;
+  const observe = activeRows.filter((row) => getAnalysis(row).flowCode === "observe").length;
+  const majorRisk = activeRows.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "重大违法风险" && tag.status !== "未命中")).length;
 
   const items = [
-    ["当前股票池", total, "来自 2026-06-05 原始快照"],
+    ["上传总行数", total, "先做样本清洗"],
+    ["进入当前池", activeRows.length, "仅保留当前 ST/*ST"],
+    ["排除非当前", archived, "正常、退市或历史样本"],
     ["纯 ST", pureSt, "重点看摘帽"],
     ["纯 *ST", pureStar, "重点看摘星"],
     ["ST+*ST", stacked, "摘星和摘帽要分开"],
-    ["财务硬指标线索", financial, "v0.2 优先自动识别类型"],
-    ["人工复核样本", review, "原因模糊、多重问题或证据待补"],
+    ["财务硬指标线索", financial, "v0.2.1 优先自动识别类型"],
+    ["基础观察池", observe, "有线索，待证据补齐"],
+    ["需复核提示", review, "提示待补项，不等于无判断"],
     ["重大违法风险", majorRisk, "默认进入高风险复核"],
   ];
   els.kpiGrid.innerHTML = items
@@ -372,16 +385,20 @@ function renderKpis() {
 
 function renderFunnel() {
   const total = state.pool.length;
-  const mapped = state.pool.filter((row) => getAnalysis(row).reasonQuality.mappingStatus !== "未映射").length;
-  const quant = state.pool.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "财务硬指标修复" && tag.status !== "未命中")).length;
-  const humanReview = state.pool.filter((row) => getAnalysis(row).needsReview).length;
-  const observe = state.pool.filter((row) => getAnalysis(row).flowCode === "observe").length;
+  const activeRows = state.pool.filter((row) => getAnalysis(row).sampleType.isCurrent);
+  const archived = total - activeRows.length;
+  const mapped = activeRows.filter((row) => getAnalysis(row).reasonQuality.mappingStatus !== "未映射").length;
+  const quant = activeRows.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "财务硬指标修复" && tag.status !== "未命中")).length;
+  const humanReview = activeRows.filter((row) => getAnalysis(row).needsReview).length;
+  const observe = activeRows.filter((row) => getAnalysis(row).flowCode === "observe").length;
 
   const steps = [
-    ["上传股票池", total, "先接收市场所有已挂 ST/*ST 的公司。"],
+    ["上传原始表", total, "允许混入脏样本，但先做清洗。"],
+    ["进入当前池", activeRows.length, "只分析当前仍戴帽 ST/*ST 公司。"],
+    ["排除非当前", archived, "正常、退市、历史样本不参与当前筛选。"],
     ["原因可初拆", mapped, "把 ST/*ST 原因拆成财务、审计、内控、重整等线索。"],
     ["可量化线索", quant, "净资产、扣除后收入、利润三类硬指标优先识别。"],
-    ["人工复核区", humanReview, "多重原因、重大违法、持续经营和弱来源必须复核。"],
+    ["待补证据提示", humanReview, "人工复核是提示项，不直接吞掉初判。"],
     ["基础观察池", observe, "只代表值得进一步看，不代表高概率或交易结论。"],
   ];
 
@@ -404,7 +421,7 @@ function renderStockSelect() {
     .map((code) => `<option value="${code}">${code} ${curatedProfiles[code].name} · 深度样本</option>`)
     .join("");
   const poolOptions = state.pool
-    .filter((row) => !curatedProfiles[row["证券代码"]])
+    .filter((row) => !curatedProfiles[row["证券代码"]] && getAnalysis(row).sampleType.isCurrent)
     .map((row) => `<option value="${escapeHtml(row["证券代码"])}">${escapeHtml(row["证券代码"])} ${escapeHtml(row["证券名称"])} · 基础诊断</option>`)
     .join("");
   els.stockSelect.innerHTML = `
@@ -434,7 +451,7 @@ function renderTable() {
         <tr class="${active}" data-code="${escapeHtml(code)}">
           <td><b>${escapeHtml(code)}</b></td>
           <td>${escapeHtml(row["证券名称"] || "")}</td>
-          <td>${escapeHtml(profile.analysis.statusLayer || "待复核")}</td>
+          <td>${escapeHtml(profile.analysis.sampleType.isCurrent ? profile.analysis.statusLayer || "待复核" : profile.analysis.sampleType.label)}</td>
           <td>${renderTags(profile.strategyTags, true)}</td>
           <td>${escapeHtml(profile.analysis.reasonQuality.completionStatus)} · ${escapeHtml(profile.analysis.reasonQuality.mappingStatus)}</td>
           <td><span class="badge badge-${profile.flowCode}">${escapeHtml(profile.flowLabel)}</span></td>
@@ -464,7 +481,7 @@ function renderDetail() {
       <div class="identity">
         <div>
           <h3>${escapeHtml(profile.code)} ${escapeHtml(profile.name)}</h3>
-          <p class="muted">${escapeHtml(profile.analysis.exchange || "待复核")} · ${escapeHtml(profile.analysis.board || "待复核")} · ${escapeHtml(profile.analysis.statusLayer || "待复核")}</p>
+          <p class="muted">${escapeHtml(profile.analysis.exchange || "待复核")} · ${escapeHtml(profile.analysis.board || "待复核")} · ${escapeHtml(profile.analysis.sampleType.isCurrent ? profile.analysis.statusLayer || "待复核" : profile.analysis.sampleType.label)}</p>
         </div>
         <span class="badge badge-${profile.flowCode}">${escapeHtml(profile.flowLabel)}</span>
       </div>
@@ -479,7 +496,7 @@ function renderCuratedDetail(profile) {
   return `
     <p class="note">${escapeHtml(profile.oneLine)}</p>
     ${renderAutoSummary(profile)}
-    <p class="note">下面四联判断属于三只样本的深度演示；v0.2 自动上传层只负责基础识别，最终预测策略后续继续打磨。</p>
+    <p class="note">下面四联判断属于三只样本的深度演示；v0.2.1 自动上传层只负责基础识别和样本清洗，最终预测策略后续继续打磨。</p>
     <div class="verdict-grid">
       ${renderVerdict("摘帽概率", profile.four.probability)}
       ${renderVerdict("证据闭环", profile.four.evidence)}
@@ -545,13 +562,19 @@ function renderCuratedDetail(profile) {
 }
 
 function renderGenericDetail(profile, row) {
+  const notCurrent = !profile.analysis.sampleType.isCurrent;
   return `
-    <p class="note">这家公司目前只完成 v0.2 基础自动识别：能看出它大概属于什么风险、哪些字段触发了标签、是否需要补公告和人工复核；暂不输出最终摘帽概率或投资结论。</p>
+    <p class="note">${
+      notCurrent
+        ? "这条记录不是当前仍戴帽的 ST/*ST 公司，已从当前机会筛选池排除；如需使用，应转入历史案例库或退市风险样本库。"
+        : "这家公司目前只完成 v0.2.1 基础自动识别：能看出它大概属于什么风险、哪些字段触发了标签、是否需要补公告和人工复核；暂不输出最终摘帽概率或投资结论。"
+    }</p>
     ${renderAutoSummary(profile)}
     <div class="verdict-grid">
+      ${renderVerdict("样本类型", [profile.analysis.sampleType.label, profile.analysis.sampleType.reason])}
       ${renderVerdict("自动识别状态", [profile.flowLabel, "这是基础分流，不等于最终预测。"])}
       ${renderVerdict("原因补齐", [profile.analysis.reasonQuality.completionStatus, "上传原因只是初始线索，后续要用公告和年报校验。"])}
-      ${renderVerdict("人工复核", [profile.analysis.needsReview ? "需要" : "暂不强制", (profile.analysis.reasonQuality.reviewReasons || []).join("；") || "未识别到强复核触发项。"])}
+      ${renderVerdict("待补/复核项", [profile.analysis.needsReview ? "有" : "暂不强制", (profile.analysis.reasonQuality.reviewReasons || []).join("；") || "未识别到强复核触发项。"])}
       ${renderVerdict("下一步", ["补证据链", "补戴帽公告、年报、审计/内控、问询或市场行为数据后再进入预测层。"])}
     </div>
     <div class="info-grid">
@@ -584,6 +607,10 @@ function renderAutoSummary(profile) {
   const topTags = analysis.tags.filter((tag) => tag.status !== "未命中").slice(0, 6);
   return `
     <div class="auto-grid">
+      <div class="auto-card">
+        <span>样本清洗</span>
+        <strong>${escapeHtml(analysis.sampleType.label)}</strong>
+      </div>
       <div class="auto-card">
         <span>初步分流</span>
         <strong><span class="badge badge-${analysis.flowCode}">${escapeHtml(analysis.flowLabel)}</span></strong>
@@ -657,7 +684,7 @@ function renderReport(profile, row, isCurated) {
     `
     : `
       <h4>一、核心结论</h4>
-      <p>该公司当前只完成 v0.2 基础标签识别，初步分流为：${escapeHtml(profile.flowLabel)}。该结论不是摘帽概率，也不是交易建议。</p>
+      <p>样本类型：${escapeHtml(profile.analysis.sampleType.label)}。初步分流为：${escapeHtml(profile.flowLabel)}。该结论不是摘帽概率，也不是交易建议。</p>
       <h4>二、自动识别结果</h4>
       <p>原因补齐状态：${escapeHtml(profile.analysis.reasonQuality.completionStatus)}；规则映射状态：${escapeHtml(profile.analysis.reasonQuality.mappingStatus)}；原因大类：${escapeHtml(profile.analysis.reasonQuality.reasonClass)}。</p>
       <h4>三、原始原因</h4>
@@ -668,7 +695,7 @@ function renderReport(profile, row, isCurated) {
 
   els.reportPreview.innerHTML = `
     <h3>${escapeHtml(profile.code)} ${escapeHtml(profile.name)} 摘星摘帽研究报告</h3>
-    <p class="note">v0.2 报告用于研究复核，不构成交易建议。当前报告先展示结构化逻辑，最终版本会继续补图表、行情窗口和历史相似案例。</p>
+    <p class="note">v0.2.1 报告用于研究复核，不构成交易建议。当前报告先展示结构化逻辑，最终版本会继续补图表、行情窗口和历史相似案例。</p>
     ${reportBody}
   `;
 }
@@ -699,12 +726,12 @@ function getProfile(code, row) {
     analysis,
     flowCode,
     flowLabel: flowLabels[flowCode],
-    strategyTags: tags.length ? tags : ["待补充字段"],
+    strategyTags: analysis.sampleType.isCurrent ? (tags.length ? tags : ["待补充字段"]) : [analysis.sampleType.label],
   };
 }
 
 function classRank(code) {
-  return { observe: 0, review: 1, risk: 2, exclude: 3 }[code] ?? 4;
+  return { observe: 0, review: 1, risk: 2, exclude: 3, archive: 4 }[code] ?? 5;
 }
 
 function renderTags(tags, compact = false) {
@@ -720,6 +747,7 @@ function normalizeRow(row) {
   next["ST原因"] = normalizeEmpty(next["ST原因"]);
   next["*ST原因"] = normalizeEmpty(next["*ST原因"]);
   next["当前状态"] ||= next["ST or *ST"] || (String(next["证券名称"]).includes("*ST") ? "*ST" : String(next["证券名称"]).includes("ST") ? "ST" : "待复核");
+  next["当前状态"] = normalizeStatusText(next["当前状态"], next["证券名称"]);
   next["状态分层"] = inferStatusLayer(next);
   next["所属交易所"] ||= inferExchange(next["证券代码"]);
   next["所属板块"] ||= inferBoard(next["证券代码"]);
@@ -739,13 +767,13 @@ function analyzeRow(row) {
     row["ST原因"],
     row["*ST原因"],
     row["当前阶段"],
-    row["审计意见"],
-    row["内控意见"],
-    row["备注"],
+    hasContent(row["审计意见"]) ? row["审计意见"] : "",
+    hasContent(row["内控意见"]) ? row["内控意见"] : "",
   ]
     .filter(Boolean)
     .join("；");
   const lowerText = text.toLowerCase();
+  const sampleType = inferSampleType(row);
   const tags = [
     tagFinancial(row, text),
     tagAudit(row, text),
@@ -756,9 +784,10 @@ function analyzeRow(row) {
     tagMajorViolation(row, text),
     tagGoingConcern(row, text),
   ];
-  const reasonQuality = analyzeReasonQuality(row, tags, text);
-  const flowCode = inferFlow(tags, reasonQuality, row, lowerText);
+  const reasonQuality = analyzeReasonQuality(row, tags, text, sampleType);
+  const flowCode = inferFlow(tags, reasonQuality, sampleType, lowerText);
   return {
+    sampleType,
     statusLayer: row["状态分层"],
     exchange: row["所属交易所"],
     board: row["所属板块"],
@@ -766,7 +795,7 @@ function analyzeRow(row) {
     flowCode,
     flowLabel: flowLabels[flowCode],
     reasonQuality,
-    needsReview: reasonQuality.needsReview || tags.some((tag) => tag.status === "待人工复核"),
+    needsReview: sampleType.isCurrent && (reasonQuality.needsReview || tags.some((tag) => tag.status === "待人工复核")),
     fieldStatus: fieldStatus(row),
   };
 }
@@ -815,7 +844,7 @@ function tagFinancial(row, text) {
 
 function tagAudit(row, text) {
   const tag = baseTag("审计意见修复");
-  const audit = String(row["审计意见"] || "");
+  const audit = hasContent(row["审计意见"]) ? String(row["审计意见"] || "") : "";
   if (!audit && !/审计|非标|保留意见|无法表示|否定意见|标准无保留|强调事项/.test(text)) return tag;
   tag.triggers.push("审计意见/审计相关原因");
   if (/无法表示|否定意见/.test(audit) || /无法表示|否定意见/.test(text)) {
@@ -835,7 +864,7 @@ function tagAudit(row, text) {
 
 function tagInternalControl(row, text) {
   const tag = baseTag("内控/合规整改");
-  const ic = String(row["内控意见"] || "");
+  const ic = hasContent(row["内控意见"]) ? String(row["内控意见"] || "") : "";
   if (!ic && !/内控|内部控制|整改|监管函|问询函|处罚|规范运作/.test(text)) return tag;
   tag.triggers.push("内控意见/整改原因");
   if (/否定意见|无法表示|重大缺陷|整改尚未完成/.test(ic + text)) {
@@ -915,23 +944,30 @@ function tagGoingConcern(row, text) {
   return { ...tag, status: "待人工复核", progress: "待补证据", note: "持续经营相关信息需要人工判断。" };
 }
 
-function analyzeReasonQuality(row, tags, text) {
+function analyzeReasonQuality(row, tags, text, sampleType) {
   const st = hasContent(row["ST原因"]);
   const star = hasContent(row["*ST原因"]);
   const reviewReasons = [];
-  if (!st && !star) reviewReasons.push("ST原因和*ST原因均未补齐，需要查原始戴帽公告。");
-  if (/财务问题|年报非标|其他原因|风险事项|待复核/.test(text) && text.length < 40) reviewReasons.push("原因表述偏模糊，需要拆成具体触发事实。");
-  if (st && star) reviewReasons.push("同时存在 ST 与 *ST 原因，需要分别判断摘星和摘帽。");
-  if (tags.some((tag) => ["重大违法风险", "资金占用/违规担保", "持续经营不确定性"].includes(tag.name) && tag.status !== "未命中")) {
+  const reasonText = [row["ST原因"], row["*ST原因"]].filter(Boolean).join("；");
+  if (!sampleType.isCurrent) {
+    reviewReasons.push(sampleType.reason);
+  } else if (!st && !star) {
+    reviewReasons.push("ST原因和*ST原因均未补齐，需要查原始戴帽公告。");
+  }
+  if (sampleType.isCurrent && /财务问题|年报非标|其他原因|风险事项/.test(reasonText) && reasonText.length < 40) {
+    reviewReasons.push("原因表述偏模糊，需要拆成具体触发事实。");
+  }
+  if (sampleType.isCurrent && st && star) reviewReasons.push("同时存在 ST 与 *ST 原因，需要分别判断摘星和摘帽。");
+  if (sampleType.isCurrent && tags.some((tag) => ["重大违法风险", "资金占用/违规担保", "持续经营不确定性"].includes(tag.name) && tag.status !== "未命中")) {
     reviewReasons.push("命中监管、治理或持续经营类问题，不能只靠自动规则下结论。");
   }
   const reasonClass = tags
     .filter((tag) => tag.status !== "未命中")
     .map((tag) => tag.name)
     .slice(0, 4)
-    .join(" / ") || "待补原因";
-  const completionStatus = !st && !star ? "未补齐" : reviewReasons.length ? "部分补齐" : "基本补齐";
-  const mappingStatus = !st && !star ? "未映射" : reviewReasons.length ? "部分映射" : "待公告校验";
+    .join(" / ") || (sampleType.isCurrent ? "待补原因" : sampleType.label);
+  const completionStatus = !sampleType.isCurrent ? "不适用" : !st && !star ? "未补齐" : reviewReasons.length ? "部分补齐" : "基本补齐";
+  const mappingStatus = !sampleType.isCurrent ? "不进入当前池" : !st && !star ? "未映射" : reviewReasons.length ? "部分映射" : "待公告校验";
   const evidenceStrength = "弱：来自上传表字段，尚未接入原始公告链接";
   return {
     completionStatus,
@@ -939,20 +975,22 @@ function analyzeReasonQuality(row, tags, text) {
     evidenceStrength,
     reasonClass,
     isMultiple: st && star,
-    needsReview: reviewReasons.length > 0,
+    needsReview: sampleType.isCurrent && reviewReasons.length > 0,
     reviewReasons,
   };
 }
 
-function inferFlow(tags, reasonQuality) {
+function inferFlow(tags, reasonQuality, sampleType) {
+  if (!sampleType.isCurrent) return "archive";
   const hit = (name, status) => tags.some((tag) => tag.name === name && (!status || tag.status === status));
   const negativeCount = tags.filter((tag) => tag.status === "命中负向").length;
   const positiveCount = tags.filter((tag) => tag.status === "命中正向").length;
   const reviewCount = tags.filter((tag) => tag.status === "待人工复核").length;
   if (hit("重大违法风险", "命中负向")) return "exclude";
   if (negativeCount >= 2 || hit("持续经营不确定性", "命中负向")) return "risk";
-  if (reviewCount || reasonQuality.needsReview) return "review";
   if (positiveCount) return "observe";
+  if (negativeCount) return "risk";
+  if (reviewCount || reasonQuality.needsReview) return "review";
   return "review";
 }
 
@@ -966,6 +1004,53 @@ function inferStatusLayer(row) {
   if (status === "*ST") return "纯*ST";
   if (status === "ST") return "纯ST";
   return "待复核";
+}
+
+function normalizeStatusText(status, name = "") {
+  const text = String(status || "").trim();
+  const combined = `${text} ${name}`;
+  if (/退市|终止上市/.test(combined)) return "退市";
+  if (/正常|已摘帽|撤销风险警示/.test(combined)) return "正常";
+  if (/\*ST/i.test(combined)) return "*ST";
+  if (/(^|[^A-Z])ST/i.test(combined)) return "ST";
+  return text || "待复核";
+}
+
+function inferSampleType(row) {
+  const status = normalizeStatusText(row["当前状态"] || row["ST or *ST"], row["证券名称"]);
+  const name = String(row["证券名称"] || "");
+  const stReason = hasContent(row["ST原因"]);
+  const starReason = hasContent(row["*ST原因"]);
+  if (status === "退市" || /退市/.test(name)) {
+    return {
+      code: "delisted",
+      label: "退市/历史样本",
+      isCurrent: false,
+      reason: "退市公司不进入当前 ST/*ST 机会池，应转入历史失败样本或退市风险样本库。",
+    };
+  }
+  if (status === "正常" || (!/ST/i.test(name) && /正常|已摘帽/.test(String(row["备注"] || "")))) {
+    return {
+      code: "normal",
+      label: "正常/已摘帽样本",
+      isCurrent: false,
+      reason: "正常或已摘帽公司不进入当前监控池，可作为历史成功样本另行使用。",
+    };
+  }
+  if (status === "ST" || status === "*ST" || /ST/i.test(name) || stReason || starReason) {
+    return {
+      code: "current",
+      label: "当前ST/*ST样本",
+      isCurrent: true,
+      reason: "当前仍戴帽，进入基础识别和后续证据链分析。",
+    };
+  }
+  return {
+    code: "unknown",
+    label: "状态不明样本",
+    isCurrent: false,
+    reason: "未识别为当前 ST/*ST，公司状态需先清洗确认。",
+  };
 }
 
 function inferExchange(code) {
@@ -988,7 +1073,22 @@ function inferBoard(code) {
 
 function hasContent(value) {
   const text = String(value ?? "").trim();
-  return Boolean(text && !["无", "暂无", "未披露", "null", "undefined", "-", "—"].includes(text));
+  return Boolean(
+    text &&
+      ![
+        "无",
+        "暂无",
+        "未披露",
+        "待复核",
+        "历史/退市原因待复核",
+        "原因待复核",
+        "规则待映射",
+        "null",
+        "undefined",
+        "-",
+        "—",
+      ].includes(text),
+  );
 }
 
 function normalizeEmpty(value) {
@@ -1020,11 +1120,11 @@ function revenueThreshold(board) {
 
 function fieldStatus(row) {
   const filled = templateFields.filter((field) => hasContent(row[field] || row[field.replace("股票", "证券")])).length;
-  return `v0.2 模板字段已识别 ${filled}/${templateFields.length} 个；字段越完整，自动识别越稳定。`;
+  return `v0.2.1 模板字段已识别 ${filled}/${templateFields.length} 个；字段越完整，自动识别越稳定。`;
 }
 
 function downloadUploadTemplate() {
-  downloadCsv("摘帽咯_ST股票池上传模板_v0.2.csv", [templateFields]);
+  downloadCsv("摘帽咯_ST股票池上传模板_v0.2.1.csv", [templateFields]);
 }
 
 function downloadUploadExample() {
@@ -1112,7 +1212,7 @@ function downloadUploadExample() {
       "示例：重大违法风险观察样本",
     ],
   ];
-  downloadCsv("摘帽咯_ST股票池上传示例_v0.2.csv", rows);
+  downloadCsv("摘帽咯_ST股票池上传示例_v0.2.1.csv", rows);
 }
 
 function downloadCsv(filename, rows) {
@@ -1141,8 +1241,8 @@ async function handleUpload(event) {
     const data = JSON.parse(await file.text());
     if (Array.isArray(data)) {
       state.pool = data.map(normalizeRow);
-      state.selectedCode = state.pool[0]?.["证券代码"] || state.selectedCode;
-      els.uploadStatus.textContent = `已载入 JSON：${file.name}，共 ${data.length} 行`;
+      state.selectedCode = firstSelectableCode(state.pool) || state.pool[0]?.["证券代码"] || state.selectedCode;
+      els.uploadStatus.textContent = uploadSummary(`已载入 JSON：${file.name}`, state.pool);
       renderAll();
     }
     return;
@@ -1150,12 +1250,22 @@ async function handleUpload(event) {
   if (lower.endsWith(".csv")) {
     const data = parseCsv(await file.text()).map(normalizeRow);
     state.pool = data;
-    state.selectedCode = state.pool[0]?.["证券代码"] || state.selectedCode;
-    els.uploadStatus.textContent = `已载入 CSV：${file.name}，共 ${data.length} 行`;
+    state.selectedCode = firstSelectableCode(state.pool) || state.pool[0]?.["证券代码"] || state.selectedCode;
+    els.uploadStatus.textContent = uploadSummary(`已载入 CSV：${file.name}`, state.pool);
     renderAll();
     return;
   }
-  els.uploadStatus.textContent = `已选择 ${file.name}。v0.2 当前先稳定支持 CSV/JSON；请把 Excel 按模板另存为 CSV 后上传。`;
+  els.uploadStatus.textContent = `已选择 ${file.name}。v0.2.1 当前先稳定支持 CSV/JSON；请把 Excel 按模板另存为 CSV 后上传。`;
+}
+
+function firstSelectableCode(rows) {
+  return rows.find((row) => getAnalysis(row).sampleType.isCurrent)?.["证券代码"] || rows[0]?.["证券代码"] || "";
+}
+
+function uploadSummary(prefix, rows) {
+  const active = rows.filter((row) => getAnalysis(row).sampleType.isCurrent).length;
+  const archived = rows.length - active;
+  return `${prefix}，共 ${rows.length} 行；进入当前ST/*ST池 ${active} 行，排除非当前样本 ${archived} 行。`;
 }
 
 function parseCsv(text) {
