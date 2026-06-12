@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>摘帽咯 v0.3 工作台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260612v3" />
+    <title>摘帽咯 v0.4 研究工作台</title>
+    <link rel="stylesheet" href="./styles.css?v=20260612v4" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">特殊机会投资研究工具 · v0.3</p>
+        <p class="eyebrow">特殊机会投资研究工具 · v0.4</p>
         <h1>摘帽咯 ST/*ST 摘星摘帽筛选工作台</h1>
         <p class="subtitle">
-          以当前仍戴帽的 ST/*ST 股票池为入口，先完成样本清洗和基础识别，再用规则引擎、公告证据、财务质量、市场窗口和历史回放形成可复核的双轨研究卡。
+          以当前仍戴帽的 ST/*ST 股票池为入口，按“样本清洗 → 规则缺口 → 公告证据 → 双轨判断 → 历史回放”的路径形成可复核研究卡。
         </p>
       </div>
       <div class="topbar-actions">
@@ -46,6 +46,14 @@
 
       <section class="kpi-grid" id="kpiGrid" aria-label="股票池概览"></section>
 
+      <section class="workflow-band overview-band" aria-labelledby="overviewTitle">
+        <div class="section-heading">
+          <p class="eyebrow">系统判断总览</p>
+          <h2 id="overviewTitle">先看结论，再展开证据</h2>
+        </div>
+        <div class="overview-grid" id="systemOverview"></div>
+      </section>
+
       <section class="workflow-band" aria-labelledby="workflowTitle">
         <div class="section-heading">
           <p class="eyebrow">基础标签层</p>
@@ -56,26 +64,34 @@
 
       <section class="workflow-band engine-band" aria-labelledby="engineTitle">
         <div class="section-heading">
-          <p class="eyebrow">v0.3 研究引擎</p>
-          <h2 id="engineTitle">上传层之后，系统要跑的两条主线</h2>
+          <p class="eyebrow">v0.4 研究引擎</p>
+          <h2 id="engineTitle">上传层之后，系统要跑的三条线</h2>
         </div>
         <div class="engine-grid">
           <div class="engine-card">
             <span>Track A</span>
-            <h3>摘帽确定性</h3>
+            <h3>摘帽概率与规则修复</h3>
             <p>判断当前是否具备撤销资格、未来是否有修复线索，以及后续哪些公告会让概率抬升。</p>
           </div>
           <div class="engine-card">
             <span>Track B</span>
-            <h3>投资窗口</h3>
+            <h3>交易窗口与市场定价</h3>
             <p>判断市场是否已经提前反映、成交换手是否拥挤、公告后是否仍可能有观察窗口。</p>
           </div>
           <div class="engine-card">
             <span>Replay</span>
-            <h3>历史回放</h3>
+            <h3>历史回放与模型验证</h3>
             <p>用历史 as-of-date 视角复盘：当时只看已公开信息，系统判断和真实结果是否一致。</p>
           </div>
         </div>
+      </section>
+
+      <section class="workflow-band research-path-band" aria-labelledby="pathTitle">
+        <div class="section-heading">
+          <p class="eyebrow">v0.4 研究路径</p>
+          <h2 id="pathTitle">每只股票都按同一条链路解释</h2>
+        </div>
+        <div class="path-grid" id="researchPath"></div>
       </section>
 
       <section class="work-grid">
@@ -113,7 +129,7 @@
                   <th>分层</th>
                   <th>基础标签</th>
                   <th>原因质量</th>
-                  <th>v0.3分类</th>
+                  <th>v0.4分类</th>
                   <th>数据状态</th>
                 </tr>
               </thead>
@@ -146,7 +162,7 @@
       </section>
     </main>
 
-    <script src="./data/current_pool.js?v=20260612v3"></script>
-    <script src="./main.js?v=20260612v3"></script>
+    <script src="./data/current_pool.js?v=20260612v4"></script>
+    <script src="./main.js?v=20260612v4"></script>
   </body>
 </html>
