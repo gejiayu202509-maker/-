@@ -1629,6 +1629,9 @@ function coarseAction(profile, research) {
   const grade = research?.scores?.grade || research?.bucket || "";
   const blockers = (research?.trackA?.blockers || []).join("；");
   const dataStatus = (research?.dataStatus || []).map(([, value]) => String(value)).join("；");
+  const repair = research?.trackA?.repair || "";
+  const hasBasicRepair = hasBasicRepairClue(profile);
+  const hasHardBlocker = /重大违法|强制退市|无法表示|否定意见|终止上市|已退市|退市高危/.test(blockers);
 
   if (!analysis.sampleType?.isCurrent || /非当前/.test(grade)) {
     return {
@@ -1637,18 +1640,25 @@ function coarseAction(profile, research) {
       detail: "正常、退市、已摘帽或历史样本，转入历史库。",
     };
   }
-  if (/重大违法|强制退市|无法表示|否定意见|终止上市|退市/.test(blockers) || /^D$/.test(grade) || analysis.flowCode === "exclude") {
+  if (hasHardBlocker || analysis.flowCode === "exclude") {
     return {
       code: "drop",
       label: "直接筛掉",
       detail: "命中重大硬伤，暂不浪费公告链抓取额度。",
     };
   }
-  if (analysis.flowCode === "risk" && !/强|中/.test(research?.trackA?.repair || "")) {
+  if (/^A|B|A\+|A-/.test(grade) || /强|中/.test(repair) || hasBasicRepair) {
     return {
-      code: "drop",
-      label: "风险排除",
-      detail: "风险信号强且暂无明确修复线索。",
+      code: "evidence",
+      label: "补公告候选",
+      detail: "存在基础修复线索，进入定向公告链、规则缺口和行情窗口抓取。",
+    };
+  }
+  if (analysis.flowCode === "risk" && !/强|中/.test(repair)) {
+    return {
+      code: "hold",
+      label: "暂缓补证",
+      detail: "风险信号较强但尚非硬排除，先补原戴帽公告和关键财务字段。",
     };
   }
   if (/待补|待映射|待核验|待接入|待数据/.test(dataStatus) && !/^A|B/.test(grade)) {
@@ -1663,6 +1673,21 @@ function coarseAction(profile, research) {
     label: "补公告候选",
     detail: "进入定向公告链、规则缺口和行情窗口抓取。",
   };
+}
+
+function hasBasicRepairClue(profile) {
+  const row = profile?.analysis?.rawRow || {};
+  const netAsset = parseNumber(row["净资产"]);
+  const netProfit = parseNumber(row["净利润"]);
+  const profitTotal = parseNumber(row["利润总额"]);
+  const revenue = parseNumber(row["营业收入"]);
+  const mcap = parseNumber(row["市值"]);
+  const status = row["当前状态"] || "";
+  if (netAsset !== null && netAsset > 0 && (netProfit === null || netProfit >= 0)) return true;
+  if (netAsset !== null && netAsset > 0 && profitTotal !== null && profitTotal >= 0) return true;
+  if (/^ST$/.test(status) && netAsset !== null && netAsset > 0 && revenue !== null && revenue > 0) return true;
+  if (mcap !== null && mcap < 1) return false;
+  return false;
 }
 
 function renderCoarseActionPill(profile, research) {
@@ -1980,6 +2005,7 @@ function analyzeRow(row) {
   const reasonQuality = analyzeReasonQuality(row, tags, text, sampleType);
   const flowCode = inferFlow(tags, reasonQuality, sampleType, lowerText);
   return {
+    rawRow: row,
     sampleType,
     statusLayer: row["状态分层"],
     exchange: row["所属交易所"],
@@ -2388,12 +2414,13 @@ function inferSuffix(code) {
 
 function downloadCandidates() {
   const rows = [
-    ["股票代码", "股票简称", "基础分流", "粗筛动作", "综合等级", "综合研究分", "主要原因", "需要补充的数据"],
+    ["股票代码", "股票简称", "基础分流", "粗筛动作", "公告抓取优先级", "综合等级", "综合研究分", "主要原因", "需要补充的数据", "粗筛说明"],
     ...state.pool
       .filter((row) => {
         const profile = getProfile(row["证券代码"], row);
         const research = getResearchState(profile, row);
-        return coarseAction(profile, research).code === "evidence";
+        const action = coarseAction(profile, research);
+        return ["evidence", "hold"].includes(action.code);
       })
       .map((row) => {
         const profile = getProfile(row["证券代码"], row);
@@ -2404,10 +2431,12 @@ function downloadCandidates() {
           profile.name,
           profile.flowLabel,
           action.label,
+          action.code === "evidence" ? "高：优先补公告链" : "中：先补原戴帽原因和关键财务字段",
           research.scores?.grade || research.bucket,
           research.scores?.composite ?? "",
           profile.analysis.reasonQuality.reasonClass,
           "原戴帽公告；年报/审计/内控；问询函及回复；撤销申请；T-20/T-60/T-120行情窗口",
+          action.detail,
         ];
       }),
   ];
