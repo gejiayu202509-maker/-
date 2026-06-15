@@ -194,6 +194,12 @@ h3 {
   line-height: 1.4;
 }
 
+.secondary-upload {
+  min-height: 72px;
+  border-style: solid;
+  background: #fbfdfc;
+}
+
 .upload-side {
   display: grid;
   gap: 10px;
@@ -617,6 +623,68 @@ tbody tr.active-row {
   background: #fff;
 }
 
+.score-panel,
+.review-panel,
+.soft-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #c9d9d3;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdfc;
+}
+
+.score-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.score-main h3 {
+  font-size: 28px;
+}
+
+.score-main p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.score-range {
+  min-width: 150px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+.score-range span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.score-range strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 24px;
+}
+
+.score-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.score-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .score-label {
   display: flex;
   justify-content: space-between;
@@ -636,6 +704,16 @@ tbody tr.active-row {
   height: 100%;
   border-radius: inherit;
   background: var(--green);
+}
+
+.table-score {
+  display: grid;
+  gap: 5px;
+  align-items: start;
+}
+
+.table-score b {
+  font-size: 12px;
 }
 
 .info-grid {
@@ -667,6 +745,61 @@ tbody tr.active-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.review-grid,
+.soft-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.review-card,
+.soft-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.review-card strong,
+.soft-card strong {
+  font-size: 14px;
+}
+
+.review-card p,
+.soft-card p,
+.soft-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-card .pass {
+  color: var(--green-dark);
+}
+
+.review-card .fail {
+  color: var(--red);
+}
+
+.soft-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.soft-title span {
+  color: var(--green);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.soft-bar {
+  height: 6px;
 }
 
 .auto-card {
@@ -1000,6 +1133,9 @@ tbody tr.active-row {
   .work-grid,
   .upload-panel,
   .engine-grid,
+  .score-split,
+  .review-grid,
+  .soft-grid,
   .track-grid,
   .path-grid,
   .chain-grid,
@@ -1029,6 +1165,7 @@ tbody tr.active-row {
   .verdict-grid,
   .info-grid,
   .auto-grid,
+  .score-main,
   .track-metrics {
     grid-template-columns: 1fr;
   }

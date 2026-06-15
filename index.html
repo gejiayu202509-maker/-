@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>摘帽咯 v0.4 研究工作台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260612v4" />
+    <title>摘帽咯 v0.5 研究工作台</title>
+    <link rel="stylesheet" href="./styles.css?v=20260615v5" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">特殊机会投资研究工具 · v0.4</p>
+        <p class="eyebrow">特殊机会投资研究工具 · v0.5</p>
         <h1>摘帽咯 ST/*ST 摘星摘帽筛选工作台</h1>
         <p class="subtitle">
-          以当前仍戴帽的 ST/*ST 股票池为入口，按“样本清洗 → 规则缺口 → 公告证据 → 双轨判断 → 历史回放”的路径形成可复核研究卡。
+          以当前仍戴帽的 ST/*ST 股票池为入口，先粗筛候选，再接入公告链与研究数据，按“规则缺口 → 软因子 → 双轨评分 → 人工复核分叉 → 历史回放”的路径形成可复核研究卡。
         </p>
       </div>
       <div class="topbar-actions">
@@ -26,8 +26,8 @@
         <div>
           <h2 id="uploadTitle">数据库入口</h2>
           <p>
-            上传格式暂不变，仍按 v0.2.1 股票池 CSV / JSON 模板。上传文件应尽量只放“当前仍戴帽”的 ST/*ST 公司；
-            若混入正常、退市或历史样本，系统会先排除出当前分析池，不再一律打成人工复核。
+            v0.5 采用两段式：先上传基础股票池做粗筛，不输出最终评分；再把粗筛候选交给 Agent / Skill 补公告链和行情窗口，
+            回传结构化研究数据后进入精筛、评分和报告。
           </p>
         </div>
         <div class="upload-side">
@@ -40,7 +40,13 @@
             <a class="template-link" href="./upload-format.html" target="_blank">查看上传格式示例</a>
             <button class="template-link template-button" id="downloadTemplateBtn" type="button">下载 v0.2.1 CSV 模板</button>
             <button class="template-link template-button" id="downloadExampleBtn" type="button">下载示例 CSV</button>
+            <button class="template-link template-button" id="downloadCandidatesBtn" type="button">下载粗筛候选名单</button>
           </div>
+          <label class="upload-box secondary-upload">
+            <input id="evidenceInput" type="file" accept=".json,.csv" />
+            <span>二次上传公告链 / 研究结果 JSON / CSV</span>
+            <small id="evidenceStatus">当前处于粗筛模式：尚未接入公告链、行情窗口和软因子证据。</small>
+          </label>
         </div>
       </section>
 
@@ -64,31 +70,31 @@
 
       <section class="workflow-band engine-band" aria-labelledby="engineTitle">
         <div class="section-heading">
-          <p class="eyebrow">v0.4 研究引擎</p>
-          <h2 id="engineTitle">上传层之后，系统要跑的三条线</h2>
+          <p class="eyebrow">v0.5 研究引擎</p>
+          <h2 id="engineTitle">先粗筛，再精筛，不强行全量抓公告</h2>
         </div>
         <div class="engine-grid">
           <div class="engine-card">
-            <span>Track A</span>
-            <h3>摘帽概率与规则修复</h3>
-            <p>判断当前是否具备撤销资格、未来是否有修复线索，以及后续哪些公告会让概率抬升。</p>
+            <span>Stage 1</span>
+            <h3>基础股票池粗筛</h3>
+            <p>只用上传表做样本清洗、原因初拆和明显风险排除；这一阶段不输出最终分数。</p>
           </div>
           <div class="engine-card">
-            <span>Track B</span>
-            <h3>交易窗口与市场定价</h3>
-            <p>判断市场是否已经提前反映、成交换手是否拥挤、公告后是否仍可能有观察窗口。</p>
+            <span>Stage 2</span>
+            <h3>公告链与研究数据回传</h3>
+            <p>候选名单交给 Agent / Skill 跑公告、规则、行情、软因子，再上传结构化结果。</p>
           </div>
           <div class="engine-card">
-            <span>Replay</span>
-            <h3>历史回放与模型验证</h3>
-            <p>用历史 as-of-date 视角复盘：当时只看已公开信息，系统判断和真实结果是否一致。</p>
+            <span>Stage 3</span>
+            <h3>双轨评分与复核分叉</h3>
+            <p>精筛阶段才输出 Track A / Track B 分数、综合等级、人工复核通过/失败后的升降级。</p>
           </div>
         </div>
       </section>
 
       <section class="workflow-band research-path-band" aria-labelledby="pathTitle">
         <div class="section-heading">
-          <p class="eyebrow">v0.4 研究路径</p>
+          <p class="eyebrow">v0.5 研究路径</p>
           <h2 id="pathTitle">每只股票都按同一条链路解释</h2>
         </div>
         <div class="path-grid" id="researchPath"></div>
@@ -129,7 +135,7 @@
                   <th>分层</th>
                   <th>基础标签</th>
                   <th>原因质量</th>
-                  <th>v0.4分类</th>
+                  <th>分数/等级</th>
                   <th>数据状态</th>
                 </tr>
               </thead>
@@ -162,7 +168,7 @@
       </section>
     </main>
 
-    <script src="./data/current_pool.js?v=20260612v4"></script>
-    <script src="./main.js?v=20260612v4"></script>
+    <script src="./data/current_pool.js?v=20260615v5"></script>
+    <script src="./main.js?v=20260615v5"></script>
   </body>
 </html>
