@@ -191,6 +191,7 @@ const state = {
   filtered: [],
   selectedCode: "603580.SH",
   evidenceData: null,
+  evidenceIndex: {},
   mode: "coarse",
 };
 
@@ -640,18 +641,22 @@ function renderKpis() {
   const review = activeRows.filter((row) => getAnalysis(row).needsReview).length;
   const observe = activeRows.filter((row) => getAnalysis(row).flowCode === "observe").length;
   const majorRisk = activeRows.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "重大违法风险" && tag.status !== "未命中")).length;
+  const directDrop = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "drop").length;
+  const evidenceCandidates = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "evidence").length;
 
   const items = [
     ["上传总行数", total, "先做样本清洗"],
     ["进入当前池", activeRows.length, "仅保留当前 ST/*ST"],
     ["排除非当前", archived, "正常、退市或历史样本"],
+    ["直接筛掉", directDrop, "重大硬伤或明显不适合补公告"],
+    ["补公告候选", evidenceCandidates, "优先交给 Skill 跑公告链"],
     ["纯 ST", pureSt, "重点看摘帽"],
     ["纯 *ST", pureStar, "重点看摘星"],
     ["ST+*ST", stacked, "摘星和摘帽要分开"],
     ["财务硬指标线索", financial, "上传层优先自动识别类型"],
     ["基础观察池", observe, "有线索，待证据补齐"],
     ["需复核提示", review, "提示待补项，不等于无判断"],
-    ["重大违法风险", majorRisk, "默认进入高风险复核"],
+    ["重大违法风险", majorRisk, "默认进入高风险排除/复核"],
   ];
   els.kpiGrid.innerHTML = items
     .map(([label, value, note]) => `<div class="kpi"><span>${escapeHtml(label)}</span><strong>${value}</strong><span>${escapeHtml(note)}</span></div>`)
@@ -665,11 +670,13 @@ function renderSystemOverview() {
   const bLike = researches.filter((item) => /^B/.test(item.bucket)).length;
   const cLike = researches.filter((item) => /^C/.test(item.bucket)).length;
   const dLike = researches.filter((item) => /^D/.test(item.bucket)).length;
-  const candidates = researches.filter((item) => !/^D|非当前/.test(item.bucket)).length;
+  const candidates = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "evidence").length;
+  const waitEvidence = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "hold").length;
   const modeLabel = state.mode === "fine" ? "精筛模式" : "粗筛模式";
   const cards = [
-    ["当前模式", modeLabel, state.mode === "fine" ? "已接入二次研究数据，可做精筛展示。" : "仅基础股票池粗筛，不输出最终结论。"],
-    ["可导出候选", candidates, "非 D/非当前样本，可交给 Agent / Skill 补公告链。"],
+    ["当前模式", modeLabel, state.mode === "fine" ? "已接入二次研究数据，可做精筛展示。" : "仅基础股票池粗筛，先筛差样本和导出补证候选。"],
+    ["补公告候选", candidates, "优先交给 Agent / Skill 补公告链、规则、行情窗口。"],
+    ["暂缓补证", waitEvidence, "基础数据太少，先补财务/原因，不急着抓公告。"],
     ["A 档重点", aLike, "高确定性或接近高确定性，继续看预期差。"],
     ["B 档修复观察", bLike, "当前未必具备，但未来修复线索值得跟踪。"],
     ["C/D 复核风险", cLike + dLike, "证据不足或重大硬伤，需补证据或排除。"],
@@ -690,15 +697,16 @@ function renderSystemOverview() {
 function renderResearchPath() {
   const steps = [
     ["1", "基础池上传", "只要求股票代码、简称、状态、ST/*ST原因和少量财务字段，先不强求公告链。"],
-    ["2", "粗筛清洗", "排除正常、退市、历史样本和明显离谱样本，保留可能值得补证据的候选。"],
-    ["3", "候选导出", "下载粗筛后的代码和简称，交给 Agent / Skill 定向抓公告链和行情窗口。"],
+    ["2", "硬风险粗筛", "先排除正常/退市/历史样本、重大违法强退、审计无法表示/否定、净资产为负且无修复线索等明显差样本。"],
+    ["3", "候选导出", "只导出补公告候选；暂缓补证样本先补基础财务和原因，不立刻全量抓公告。"],
     ["4", "公告链回传", "二次上传 announcement_events、rule_status、market_windows、soft_factors 等结构化结果。"],
     ["5", "规则缺口", "把每条风险原因挂到 reason_id，说明当前满足了什么、还差什么。"],
     ["6", "软因子", "把国资支持、审计态度、监管压力、重整可信度等经验变量证据化。"],
     ["7", "Track A", "计算摘帽规则与修复分：当前资格、未来修复线索、主要硬伤和抬升节点。"],
     ["8", "Track B", "计算交易窗口分：预期是否已反映、是否拥挤、公告是否太晚、后续窗口。"],
     ["9", "复核分叉", "列出人工复核项：通过如何升级，不通过如何降级，需要什么证据。"],
-    ["10", "Replay", "用历史 as-of-date 回放和 Top K 命中率验证筛选逻辑是否真的有效。"],
+    ["10", "预警与建议", "吸收三级预警、止损/减仓和窗口阈值；当前先做研究建议，持仓建议等回测后再放入 PDF。"],
+    ["11", "Replay", "用历史 as-of-date 回放、Top K 命中率、CAR 和最大回撤验证筛选逻辑是否真的有效。"],
   ];
   els.researchPath.innerHTML = steps
     .map(
@@ -722,7 +730,8 @@ function renderFunnel() {
   const mapped = activeRows.filter((row) => getAnalysis(row).reasonQuality.mappingStatus !== "未映射").length;
   const quant = activeRows.filter((row) => getAnalysis(row).tags.some((tag) => tag.name === "财务硬指标修复" && tag.status !== "未命中")).length;
   const humanReview = activeRows.filter((row) => getAnalysis(row).needsReview).length;
-  const observe = activeRows.filter((row) => getAnalysis(row).flowCode === "observe").length;
+  const observe = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "evidence").length;
+  const directDrop = activeRows.filter((row) => coarseAction(getProfile(row["证券代码"], row), getResearchState(getProfile(row["证券代码"], row), row)).code === "drop").length;
 
   const steps = [
     ["上传原始表", total, "允许混入脏样本，但先做清洗。"],
@@ -730,8 +739,9 @@ function renderFunnel() {
     ["排除非当前", archived, "正常、退市、历史样本不参与当前筛选。"],
     ["原因可初拆", mapped, "把 ST/*ST 原因拆成财务、审计、内控、重整等线索。"],
     ["可量化线索", quant, "净资产、扣除后收入、利润三类硬指标优先识别。"],
+    ["硬风险筛掉", directDrop, "重大违法、退市硬伤、审计强风险等先不进入公告链抓取。"],
     ["待补证据提示", humanReview, "人工复核是提示项，不直接吞掉初判。"],
-    ["基础观察池", observe, "只代表值得进一步看，不代表高概率或交易结论。"],
+    ["补公告候选", observe, "只代表值得进一步抓公告和行情，不代表高概率或交易结论。"],
   ];
 
   els.funnel.innerHTML = steps
@@ -750,14 +760,14 @@ function renderFunnel() {
 function renderStockSelect() {
   const curatedCodes = Object.keys(curatedProfiles);
   const curatedOptions = curatedCodes
-    .map((code) => `<option value="${code}">${code} ${curatedProfiles[code].name} · v0.5样本</option>`)
+    .map((code) => `<option value="${code}">${code} ${curatedProfiles[code].name} · v0.6样本</option>`)
     .join("");
   const poolOptions = state.pool
     .filter((row) => !curatedProfiles[row["证券代码"]] && getAnalysis(row).sampleType.isCurrent)
     .map((row) => `<option value="${escapeHtml(row["证券代码"])}">${escapeHtml(row["证券代码"])} ${escapeHtml(row["证券名称"])} · 基础诊断</option>`)
     .join("");
   els.stockSelect.innerHTML = `
-    <optgroup label="深度样本 / v0.5骨架">
+    <optgroup label="深度样本 / v0.6骨架">
       ${curatedOptions}
     </optgroup>
     <optgroup label="当前股票池基础诊断">
@@ -787,6 +797,7 @@ function renderTable() {
           <td>${escapeHtml(profile.analysis.sampleType.isCurrent ? profile.analysis.statusLayer || "待复核" : profile.analysis.sampleType.label)}</td>
           <td>${renderTags(profile.strategyTags, true)}</td>
           <td>${escapeHtml(profile.analysis.reasonQuality.completionStatus)} · ${escapeHtml(profile.analysis.reasonQuality.mappingStatus)}</td>
+          <td>${renderCoarseActionPill(profile, research)}</td>
           <td>${renderTableScore(research)}</td>
           <td>${renderDataStatusMini(research.dataStatus)}</td>
         </tr>
@@ -840,7 +851,7 @@ function curatedRow(code) {
     所属板块: inferBoard(profile.code),
     当前阶段: profile.poolLabel,
     所属行业: profile.market?.industry || "",
-    数据快照日期: "v0.5样本骨架",
+    数据快照日期: "v0.6样本骨架",
     备注: profile.poolNote || "",
   });
 }
@@ -849,12 +860,13 @@ function renderCuratedDetail(profile, research) {
   return `
     <p class="note">${escapeHtml(profile.oneLine)}</p>
     ${renderV5ScorePanel(profile, research)}
+    ${renderWarningPanel(profile, research)}
     ${renderManualReviewPanel(profile, research)}
     ${renderSoftFactorPanel(profile, research)}
     ${renderAutoSummary(profile)}
     ${renderV4EvidenceChain(profile, research)}
     ${renderV3Research(research)}
-    <p class="note">下面保留旧版四联摘要作为证据回看；v0.5 的正式承载以粗筛/精筛、综合分数、公告 reason_id、软因子、人工复核分叉和 Replay 为主。</p>
+    <p class="note">下面保留旧版四联摘要作为证据回看；v0.6 的正式承载以粗筛动作、综合分数、公告 reason_id、预警、软因子、人工复核分叉和 Replay 为主。</p>
     <div class="verdict-grid">
       ${renderVerdict("摘帽概率", profile.four.probability)}
       ${renderVerdict("证据闭环", profile.four.evidence)}
@@ -928,6 +940,7 @@ function renderGenericDetail(profile, row, research) {
         : "这家公司目前只完成上传层基础自动识别：能看出它大概属于什么风险、哪些字段触发了标签、是否需要补公告和人工复核；暂不输出最终摘帽概率或投资结论。"
     }</p>
     ${renderV5ScorePanel(profile, research)}
+    ${renderWarningPanel(profile, research)}
     ${renderManualReviewPanel(profile, research)}
     ${renderSoftFactorPanel(profile, research)}
     ${renderAutoSummary(profile)}
@@ -963,7 +976,7 @@ function renderV4EvidenceChain(profile, research, row = null) {
   return `
     <section class="v4-chain">
       <div class="section-heading">
-        <p class="eyebrow">v0.5 证据链</p>
+            <p class="eyebrow">v0.6 证据链</p>
         <h3>公告链来自二次上传；网页负责解释，不负责全量抓取</h3>
       </div>
       <div class="chain-grid">
@@ -1095,6 +1108,19 @@ function buildReasonRows(profile, row, research) {
 }
 
 function buildAnnouncementRows(profile, reasons) {
+  const evidenceRows = state.evidenceIndex?.[profile.code]?.records || [];
+  const uploadedAnnouncements = evidenceRows
+    .filter((item) => item["公告标题"] || item.title || item["公告日期"] || item.date)
+    .slice(0, 8)
+    .map((item, index) => ({
+      date: item["公告日期"] || item.date || "待补",
+      reasonId: item.reason_id || item["reason_id"] || item["原因编号"] || item["reasonId"] || reasons[Math.min(index, reasons.length - 1)]?.reasonId || "待补",
+      impact: item.reason_impact || item["reason_impact"] || item["原因影响"] || item["公告影响"] || "待复核",
+      strength: item["证据强度"] || item.evidence_strength || item["事件催化强度"] || "待复核",
+      title: item["公告标题"] || item.title || item["公告摘要"] || "二次上传公告记录",
+    }));
+  if (uploadedAnnouncements.length) return uploadedAnnouncements;
+
   if (curatedProfiles[profile.code] && Array.isArray(profile.announcements)) {
     return profile.announcements.slice(0, 4).map((item, index) => ({
       date: item.date,
@@ -1153,7 +1179,7 @@ function renderV3Research(research) {
   return `
     <section class="v3-card">
       <div class="section-heading">
-        <p class="eyebrow">v0.5 双轨研究卡</p>
+        <p class="eyebrow">v0.6 双轨研究卡</p>
         <h3>先给结构化研究分，再映射等级；真实概率等待历史校准</h3>
       </div>
       <div class="data-status-row">
@@ -1287,7 +1313,7 @@ function renderReport(profile, row, isCurated, research) {
     ? `ST 原因：${row["ST原因"] || "无"}；*ST 原因：${row["*ST原因"] || "无"}。`
     : "";
   const v3Section = `
-      <h4>二、v0.5 双轨评分</h4>
+      <h4>二、v0.6 双轨评分</h4>
       <ul>
         <li>综合分类：${escapeHtml(research.scores?.grade || research.bucket)}；综合研究分：${escapeHtml(research.scores?.composite ?? "待")}/100。${escapeHtml(research.bucketReason)}</li>
         <li>Track A：${escapeHtml(research.scores?.trackA ?? "待")}/100；Track B：${escapeHtml(research.scores?.trackB ?? "待")}/100。</li>
@@ -1295,7 +1321,13 @@ function renderReport(profile, row, isCurated, research) {
         <li>主要硬伤：${escapeHtml(research.trackA.blockers.join("；") || "暂无明确硬伤，仍需公告核验。")}</li>
         <li>Track B 窗口类型：${escapeHtml(research.trackB.windowType)}；市场反映度：${escapeHtml(research.trackB.reflection)}；拥挤度：${escapeHtml(research.trackB.crowding)}。</li>
       </ul>
-      <h4>三、人工复核分叉</h4>
+      <h4>三、预警与窗口纪律</h4>
+      <ul>
+        ${buildWarningItems(profile, research)
+          .map((item) => `<li>${escapeHtml(item.title)}：${escapeHtml(item.action)}。${escapeHtml(item.basis)}</li>`)
+          .join("")}
+      </ul>
+      <h4>四、人工复核分叉</h4>
       <ul>
         ${(research.manualReviewItems || [])
           .slice(0, 3)
@@ -1308,37 +1340,37 @@ function renderReport(profile, row, isCurated, research) {
       <h4>一、核心结论</h4>
       <p>${escapeHtml(profile.oneLine)}</p>
       ${v3Section}
-      <h4>四、旧版四联摘要</h4>
+      <h4>五、旧版四联摘要</h4>
       <ul>
         <li>摘帽概率：${escapeHtml(profile.four.probability[0])}。${escapeHtml(profile.four.probability[1])}</li>
         <li>证据闭环：${escapeHtml(profile.four.evidence[0])}。${escapeHtml(profile.four.evidence[1])}</li>
         <li>事件催化：${escapeHtml(profile.four.catalyst[0])}。${escapeHtml(profile.four.catalyst[1])}</li>
         <li>市场反映度：${escapeHtml(profile.four.market[0])}。${escapeHtml(profile.four.market[1])}</li>
       </ul>
-      <h4>五、规则与公告依据</h4>
+      <h4>六、规则与公告依据</h4>
       <p>${escapeHtml(profile.rule.trigger)} ${escapeHtml(profile.rule.condition)}</p>
       <ul>${profile.announcements.map((item) => `<li>${escapeHtml(item.date)}：${escapeHtml(item.title)}。${escapeHtml(item.note)}</li>`).join("")}</ul>
-      <h4>六、市场行为与历史参照</h4>
+      <h4>七、市场行为与历史参照</h4>
       <p>${escapeHtml(profile.market.note)} ${escapeHtml(profile.similar.gap)}</p>
-      <h4>七、风险提示与下一步</h4>
+      <h4>八、风险提示与下一步</h4>
       <ul>${profile.risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}</ul>
       <p>${escapeHtml(profile.nextAction)}</p>
     `
     : `
       <h4>一、核心结论</h4>
-      <p>样本类型：${escapeHtml(profile.analysis.sampleType.label)}。初步分流为：${escapeHtml(profile.flowLabel)}。该结论不是摘帽概率，也不是交易建议。</p>
+      <p>样本类型：${escapeHtml(profile.analysis.sampleType.label)}。初步分流为：${escapeHtml(profile.flowLabel)}。该结论不是最终摘帽概率；持仓建议需等公告链、行情窗口和回测验证后再输出。</p>
       ${v3Section}
-      <h4>四、自动识别结果</h4>
+      <h4>五、自动识别结果</h4>
       <p>原因补齐状态：${escapeHtml(profile.analysis.reasonQuality.completionStatus)}；规则映射状态：${escapeHtml(profile.analysis.reasonQuality.mappingStatus)}；原因大类：${escapeHtml(profile.analysis.reasonQuality.reasonClass)}。</p>
-      <h4>五、原始原因</h4>
+      <h4>六、原始原因</h4>
       <p>${escapeHtml(genericReason)}</p>
-      <h4>六、下一步</h4>
+      <h4>七、下一步</h4>
       <p>需要补戴帽公告、年报、审计/内控、问询或监管文件，再接入市场行为和历史相似案例，才能进入预测层。</p>
     `;
 
   els.reportPreview.innerHTML = `
     <h3>${escapeHtml(profile.code)} ${escapeHtml(profile.name)} 摘星摘帽研究报告</h3>
-    <p class="note">v0.5 报告用于研究复核，不构成交易建议。基础池粗筛不等于最终结论；公告链和行情窗口回传后，才进入精筛评分和报告。</p>
+    <p class="note">v0.6 报告用于研究复核，当前不输出持仓建议。基础池粗筛不等于最终结论；公告链和行情窗口回传后，才进入精筛评分和报告。后续验证稳定后，可在 PDF 中加入持仓、减仓和风险触发建议。</p>
     ${reportBody}
   `;
 }
@@ -1383,7 +1415,7 @@ function getResearchState(profile, row) {
     enriched.scores = scoreResearch(profile, enriched);
     enriched.manualReviewItems = buildManualReviewItems(profile, enriched);
     enriched.softFactors = buildSoftFactors(profile, enriched);
-    return enriched;
+    return applyEvidenceOverlay(profile, row, enriched);
   }
   const analysis = profile.analysis || getAnalysis(row || {});
   const positiveTags = analysis.tags.filter((tag) => tag.status === "命中正向");
@@ -1461,7 +1493,78 @@ function getResearchState(profile, row) {
   result.scores = scoreResearch(profile, result);
   result.manualReviewItems = buildManualReviewItems(profile, result);
   result.softFactors = buildSoftFactors(profile, result);
-  return result;
+  return applyEvidenceOverlay(profile, row, result);
+}
+
+function applyEvidenceOverlay(profile, row, research) {
+  const evidence = state.evidenceIndex?.[profile.code];
+  if (!evidence) return research;
+  const latest = evidence.latest || {};
+  const records = evidence.records || [];
+  const next = {
+    ...research,
+    trackA: { ...research.trackA },
+    trackB: { ...research.trackB },
+    scores: { ...(research.scores || {}) },
+    evidenceRows: records,
+  };
+
+  const get = (...keys) => {
+    for (const key of keys) {
+      if (hasContent(latest[key])) return latest[key];
+    }
+    return "";
+  };
+  const split = (value) =>
+    String(value || "")
+      .split(/[；;|、\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  next.trackA.eligibility = get("当前撤销资格", "current_eligible", "eligibility_now") || next.trackA.eligibility;
+  next.trackA.repair = get("未来修复线索", "future_repair_signal", "repair_signal") || next.trackA.repair;
+  next.trackA.certainty = get("摘帽确定性", "remove_certainty", "trackA_certainty") || next.trackA.certainty;
+  const blockers = split(get("主要硬伤", "rule_gap", "hard_blockers"));
+  if (blockers.length) next.trackA.blockers = blockers;
+  const liftNodes = split(get("概率抬升节点", "next_catalyst", "lift_nodes"));
+  if (liftNodes.length) next.trackA.liftNodes = liftNodes;
+  next.trackA.summary = get("TrackA摘要", "trackA_summary", "规则修复摘要") || next.trackA.summary;
+
+  next.trackB.windowType = get("窗口类型", "window_type") || next.trackB.windowType;
+  next.trackB.reflection = get("市场反映度", "公告前是否已反映", "priced_in") || next.trackB.reflection;
+  next.trackB.crowding = get("拥挤度", "市场拥挤度", "crowding") || next.trackB.crowding;
+  next.trackB.catalyst = get("事件催化", "event_catalyst") || next.trackB.catalyst;
+  next.trackB.liquidity = get("流动性风险", "liquidity_risk") || next.trackB.liquidity;
+  next.trackB.summary = get("TrackB摘要", "market_window_summary", "市场窗口摘要") || next.trackB.summary;
+
+  const trackA = parseNumber(get("Track A分", "TrackA分", "trackA_score"));
+  const trackB = parseNumber(get("Track B分", "TrackB分", "trackB_score"));
+  const composite = parseNumber(get("综合研究分", "综合分", "score", "composite_score"));
+  if (trackA !== null) next.scores.trackA = clamp(Math.round(trackA), 0, 100);
+  if (trackB !== null) next.scores.trackB = clamp(Math.round(trackB), 0, 100);
+  if (composite !== null) next.scores.composite = clamp(Math.round(composite), 0, 100);
+  if (composite === null && trackA !== null && trackB !== null) {
+    next.scores.composite = clamp(Math.round(next.scores.trackA * 0.65 + next.scores.trackB * 0.35), 0, 100);
+  }
+  const uploadedGrade = get("综合等级", "等级", "grade");
+  next.scores.grade = uploadedGrade || gradeFromScore(Number(next.scores.composite) || 0, next);
+  next.scores.optimistic = clamp((Number(next.scores.composite) || 0) + 6, 0, 100);
+  next.scores.pessimistic = clamp((Number(next.scores.composite) || 0) - 12, 0, 100);
+  next.scores.calibration = "二次上传研究数据，仍待历史校准";
+
+  next.dataStatus = [
+    ["上传", "已接入"],
+    ["规则", get("规则状态", "rule_status") || "已回传/待核验"],
+    ["公告", `${records.filter((item) => item["公告标题"] || item.title).length || records.length}条回传`],
+    ["财务", get("财务质量", "financial_quality") || "已回传/待核验"],
+    ["行情", get("市场窗口", "market_window") || "已回传/待核验"],
+    ["历史", get("历史回放", "replay_status") || "待匹配"],
+  ];
+  next.bucket = next.scores.grade || next.bucket;
+  next.bucketReason = get("分类原因", "bucket_reason") || bucketReason(next.bucket, profile);
+  next.manualReviewItems = buildManualReviewItems(profile, next);
+  next.softFactors = buildSoftFactors(profile, next);
+  return next;
 }
 
 function scoreResearch(profile, research) {
@@ -1494,7 +1597,7 @@ function scoreResearch(profile, research) {
     optimistic,
     pessimistic,
     grade,
-    calibration: state.mode === "fine" ? "待历史校准" : "粗筛估算，不代表真实概率",
+    calibration: state.mode === "fine" ? "待历史校准" : "粗筛研究分，不代表真实概率",
   };
 }
 
@@ -1521,13 +1624,59 @@ function renderTableScore(research) {
   `;
 }
 
+function coarseAction(profile, research) {
+  const analysis = profile.analysis || {};
+  const grade = research?.scores?.grade || research?.bucket || "";
+  const blockers = (research?.trackA?.blockers || []).join("；");
+  const dataStatus = (research?.dataStatus || []).map(([, value]) => String(value)).join("；");
+
+  if (!analysis.sampleType?.isCurrent || /非当前/.test(grade)) {
+    return {
+      code: "archive",
+      label: "不进当前池",
+      detail: "正常、退市、已摘帽或历史样本，转入历史库。",
+    };
+  }
+  if (/重大违法|强制退市|无法表示|否定意见|终止上市|退市/.test(blockers) || /^D$/.test(grade) || analysis.flowCode === "exclude") {
+    return {
+      code: "drop",
+      label: "直接筛掉",
+      detail: "命中重大硬伤，暂不浪费公告链抓取额度。",
+    };
+  }
+  if (analysis.flowCode === "risk" && !/强|中/.test(research?.trackA?.repair || "")) {
+    return {
+      code: "drop",
+      label: "风险排除",
+      detail: "风险信号强且暂无明确修复线索。",
+    };
+  }
+  if (/待补|待映射|待核验|待接入|待数据/.test(dataStatus) && !/^A|B/.test(grade)) {
+    return {
+      code: "hold",
+      label: "暂缓补证",
+      detail: "基础数据不足，先补财务/原因，再决定是否抓公告。",
+    };
+  }
+  return {
+    code: "evidence",
+    label: "补公告候选",
+    detail: "进入定向公告链、规则缺口和行情窗口抓取。",
+  };
+}
+
+function renderCoarseActionPill(profile, research) {
+  const action = coarseAction(profile, research);
+  return `<span class="coarse-pill coarse-${action.code}" title="${escapeHtml(action.detail)}">${escapeHtml(action.label)}</span>`;
+}
+
 function renderV5ScorePanel(profile, research) {
   const scores = research.scores || scoreResearch(profile, research);
   return `
     <section class="score-panel">
       <div class="score-main">
         <div>
-          <p class="eyebrow">v0.5 综合评分</p>
+          <p class="eyebrow">v0.6 综合评分</p>
           <h3>${escapeHtml(scores.grade)} · ${escapeHtml(scores.composite)}/100</h3>
           <p>等级用于研究分层，分数用于同等级内部排序；当前概率仍需历史样本校准。</p>
         </div>
@@ -1552,6 +1701,62 @@ function renderScoreBar(title, score, note) {
       <div class="bar"><i style="width:${clamp(Number(score) || 0, 0, 100)}%"></i></div>
       <p class="score-note">${escapeHtml(note)}</p>
     </div>
+  `;
+}
+
+function buildWarningItems(profile, research) {
+  const text = [
+    profile.rule?.trigger,
+    profile.rule?.type,
+    ...(profile.risks || []),
+    ...(research.trackA.blockers || []),
+    research.trackB.reflection,
+    research.trackB.crowding,
+    research.trackB.summary,
+  ]
+    .filter(Boolean)
+    .join("；");
+  const rows = [];
+  const add = (level, title, action, basis) => rows.push({ level, title, action, basis });
+
+  if (/重大违法|强制退市|证监会立案|终止上市|退市高危|无法表示|否定意见/.test(text)) {
+    add("red", "红色预警", "高风险排除 / 不进入机会池", "命中重大违法、强退、无法表示或否定意见等硬风险。");
+  }
+  if (/问询|监管函|关注函|保留意见|资金占用|违规担保|持续经营|债务逾期/.test(text)) {
+    add("orange", "橙色预警", "降级或转人工复核", "存在监管、审计、治理或持续经营类障碍，需先补公告证据。");
+  }
+  if (/过度|高拥挤|高反映|连续涨停|高开低走/.test(text)) {
+    add("yellow", "黄色预警", "降低 Track B 窗口质量", "市场可能已经提前交易摘帽预期，不能用涨幅反推摘帽概率。");
+  }
+  if (!rows.length) {
+    add("green", "暂无强预警", "继续补证据，不输出持仓建议", "当前上传字段没有触发红/橙预警，但仍需公告链和行情窗口验证。");
+  }
+  return rows.slice(0, 3);
+}
+
+function renderWarningPanel(profile, research) {
+  const items = buildWarningItems(profile, research);
+  return `
+    <section class="warning-panel">
+      <div class="section-heading">
+        <p class="eyebrow">预警与窗口纪律</p>
+        <h3>吸收交易策略报告，但当前只作为研究降级规则</h3>
+      </div>
+      <div class="warning-grid">
+        ${items
+          .map(
+            (item) => `
+              <div class="warning-card warning-${item.level}">
+                <strong>${escapeHtml(item.title)}</strong>
+                <p><b>处理：</b>${escapeHtml(item.action)}</p>
+                <p>${escapeHtml(item.basis)}</p>
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+      <p class="note">未来 PDF 可以加入持仓、减仓和止损建议；当前版本先输出研究分层和风险预警。</p>
+    </section>
   `;
 }
 
@@ -2122,31 +2327,83 @@ async function handleEvidenceUpload(event) {
     const text = await file.text();
     const data = file.name.toLowerCase().endsWith(".json") ? JSON.parse(text) : parseCsv(text);
     state.evidenceData = data;
+    state.evidenceIndex = buildEvidenceIndex(data);
     state.mode = "fine";
     const size = Array.isArray(data) ? data.length : Object.keys(data || {}).length;
-    els.evidenceStatus.textContent = `已接入 ${file.name}，识别 ${size} 条/组结构化研究数据；当前进入精筛展示模式。`;
+    const stocks = Object.keys(state.evidenceIndex).length;
+    els.evidenceStatus.textContent = `已接入 ${file.name}，识别 ${size} 条/组结构化研究数据，覆盖 ${stocks} 只股票；当前进入精筛展示模式。`;
     renderAll();
   } catch (error) {
     els.evidenceStatus.textContent = `公告链/研究结果读取失败：${error.message}`;
   }
 }
 
+function buildEvidenceIndex(data) {
+  const records = [];
+  collectEvidenceRecords(data, records, "");
+  return records.reduce((index, record) => {
+    const code = normalizeEvidenceCode(record["股票代码"] || record["证券代码"] || record.code || record.stock_code || record.symbol);
+    if (!code) return index;
+    if (!index[code]) index[code] = { records: [], latest: {} };
+    index[code].records.push(record);
+    index[code].latest = { ...index[code].latest, ...record };
+    return index;
+  }, {});
+}
+
+function collectEvidenceRecords(data, records, parentCode) {
+  if (!data) return;
+  if (Array.isArray(data)) {
+    data.forEach((item) => collectEvidenceRecords(item, records, parentCode));
+    return;
+  }
+  if (typeof data !== "object") return;
+  const code = data["股票代码"] || data["证券代码"] || data.code || data.stock_code || data.symbol || parentCode;
+  const hasRowShape = code || data["公告标题"] || data["公告日期"] || data.reason_id || data["综合研究分"] || data.trackA || data.trackB;
+  if (hasRowShape) {
+    records.push({ ...data, 股票代码: code });
+  }
+  Object.entries(data).forEach(([key, value]) => {
+    if (Array.isArray(value)) collectEvidenceRecords(value, records, code || key);
+    else if (value && typeof value === "object" && /\d{6}/.test(key)) collectEvidenceRecords(value, records, key);
+  });
+}
+
+function normalizeEvidenceCode(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (!raw) return "";
+  const match = raw.match(/(\d{6})(?:\.(SH|SZ|BJ))?/);
+  if (!match) return raw;
+  const code = match[1];
+  const suffix = match[2] || inferSuffix(code);
+  return suffix ? `${code}.${suffix}` : code;
+}
+
+function inferSuffix(code) {
+  if (/^(600|601|603|605|688|900)/.test(code)) return "SH";
+  if (/^(000|001|002|003|300|301|200)/.test(code)) return "SZ";
+  if (/^(8|9)/.test(code)) return "BJ";
+  return "";
+}
+
 function downloadCandidates() {
   const rows = [
-    ["股票代码", "股票简称", "基础分流", "综合等级", "综合研究分", "主要原因", "需要补充的数据"],
+    ["股票代码", "股票简称", "基础分流", "粗筛动作", "综合等级", "综合研究分", "主要原因", "需要补充的数据"],
     ...state.pool
       .filter((row) => {
         const profile = getProfile(row["证券代码"], row);
         const research = getResearchState(profile, row);
-        return profile.analysis.sampleType.isCurrent && !/^D|非当前/.test(research.scores?.grade || research.bucket);
+        return coarseAction(profile, research).code === "evidence";
       })
       .map((row) => {
         const profile = getProfile(row["证券代码"], row);
         const research = getResearchState(profile, row);
+        const action = coarseAction(profile, research);
         return [
           profile.code,
           profile.name,
           profile.flowLabel,
+          action.label,
           research.scores?.grade || research.bucket,
           research.scores?.composite ?? "",
           profile.analysis.reasonQuality.reasonClass,
@@ -2277,6 +2534,7 @@ async function handleUpload(event) {
       state.pool = data.map(normalizeRow);
       state.mode = "coarse";
       state.evidenceData = null;
+      state.evidenceIndex = {};
       state.selectedCode = firstSelectableCode(state.pool) || state.pool[0]?.["证券代码"] || state.selectedCode;
       els.uploadStatus.textContent = uploadSummary(`已载入 JSON：${file.name}`, state.pool);
       if (els.evidenceStatus) els.evidenceStatus.textContent = "已更新基础股票池；公告链/研究结果需重新上传后才进入精筛模式。";
@@ -2289,6 +2547,7 @@ async function handleUpload(event) {
     state.pool = data;
     state.mode = "coarse";
     state.evidenceData = null;
+    state.evidenceIndex = {};
     state.selectedCode = firstSelectableCode(state.pool) || state.pool[0]?.["证券代码"] || state.selectedCode;
     els.uploadStatus.textContent = uploadSummary(`已载入 CSV：${file.name}`, state.pool);
     if (els.evidenceStatus) els.evidenceStatus.textContent = "已更新基础股票池；公告链/研究结果需重新上传后才进入精筛模式。";
