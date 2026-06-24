@@ -1,127 +1,112 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>摘帽咯 v0.6 研究工作台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260615v6" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>摘帽咯 ST/*ST 研究工作台</title>
+    <link rel="stylesheet" href="./styles.css?v=20260624-v7" />
   </head>
   <body>
-    <header class="topbar">
+    <header class="app-header">
       <div>
-        <p class="eyebrow">特殊机会投资研究工具 · v0.6</p>
-        <h1>摘帽咯 ST/*ST 摘星摘帽筛选工作台</h1>
-        <p class="subtitle">
-          以当前仍戴帽的 ST/*ST 股票池为入口，先筛掉明显高风险和数据不合格样本，再对候选公司补公告链、行情窗口和研究证据，形成可复核的研究卡与后续持仓建议基础。
+        <p class="eyebrow">特殊机会投资研究工具 · v0.7</p>
+        <h1>摘帽咯 ST/*ST 研究工作台</h1>
+        <p class="header-copy">
+          承接 A/B/C 三阶段技能输出，把股票池清洗、公告证据链、市场窗口、历史参照和人工复核影响整合成可复核研究页面。
         </p>
       </div>
-      <div class="topbar-actions">
-        <button class="ghost-button" id="printReportBtn" type="button">导出当前报告</button>
-        <a class="primary-button" href="#single-stock">查看单股诊断</a>
+      <div class="header-actions">
+        <button id="printReportBtn" class="btn secondary" type="button">导出 / 打印报告</button>
+        <button id="downloadViewBtn" class="btn primary" type="button">下载当前视图 CSV</button>
       </div>
     </header>
 
-    <main class="shell">
-      <section class="panel upload-panel" aria-labelledby="uploadTitle">
+    <main class="page-shell">
+      <section class="panel upload-panel">
         <div>
-          <h2 id="uploadTitle">数据库入口</h2>
+          <p class="section-kicker">数据入口</p>
+          <h2>上传 Stage C 研究包</h2>
           <p>
-            v0.6 采用两段式：基础池只做样本清洗、硬风险排除和候选导出；公告链、财务质量、行情窗口和软因子回传后，才进入评分、分层和报告。
+            推荐上传 <strong>zhaimao_research_bundle_v0_4.json</strong>。也兼容 v0.3 JSON、C 阶段摘要 CSV，以及 JSON + CSV 同时上传。
           </p>
         </div>
-        <div class="upload-side">
-          <label class="upload-box">
-            <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.json" />
-            <span>上传股票池 Excel / CSV / JSON</span>
-            <small id="uploadStatus">当前使用：A股ST股统计_原始快照_2026-06-05.xlsx 抽取数据</small>
-          </label>
-          <div class="upload-links">
-            <a class="template-link" href="./upload-format.html" target="_blank">查看上传格式示例</a>
-            <button class="template-link template-button" id="downloadTemplateBtn" type="button">下载 v0.2.1 CSV 模板</button>
-            <button class="template-link template-button" id="downloadExampleBtn" type="button">下载示例 CSV</button>
-            <button class="template-link template-button" id="downloadCandidatesBtn" type="button">下载粗筛候选名单</button>
-          </div>
-          <label class="upload-box secondary-upload">
-            <input id="evidenceInput" type="file" accept=".json,.csv" />
-            <span>二次上传公告链 / 研究结果 JSON / CSV</span>
-            <small id="evidenceStatus">当前处于粗筛模式：尚未接入公告链、行情窗口、财务质量和软因子证据。</small>
-          </label>
-        </div>
+        <label class="upload-box" for="researchInput">
+          <input id="researchInput" type="file" multiple accept=".json,.csv" />
+          <span class="upload-title">选择 JSON / CSV</span>
+          <span id="uploadStatus" class="upload-subtitle">等待上传 C 阶段研究结果</span>
+        </label>
       </section>
 
-      <section class="kpi-grid" id="kpiGrid" aria-label="股票池概览"></section>
+      <section id="dataHealth" class="health-strip"></section>
 
-      <section class="workflow-band overview-band" aria-labelledby="overviewTitle">
-        <div class="section-heading">
-          <p class="eyebrow">系统判断总览</p>
-          <h2 id="overviewTitle">先看结论，再展开证据</h2>
-        </div>
-        <div class="overview-grid" id="systemOverview"></div>
-      </section>
+      <section class="metric-grid" id="metricGrid"></section>
 
-      <section class="workflow-band" aria-labelledby="workflowTitle">
-        <div class="section-heading">
-          <p class="eyebrow">基础标签层</p>
-          <h2 id="workflowTitle">从上传股票池到可研究样本</h2>
-        </div>
-        <div class="funnel" id="funnel"></div>
-      </section>
-
-      <section class="workflow-band engine-band" aria-labelledby="engineTitle">
-        <div class="section-heading">
-          <p class="eyebrow">v0.6 研究引擎</p>
-          <h2 id="engineTitle">先把差样本筛掉，再集中补证据</h2>
-        </div>
-        <div class="engine-grid">
-          <div class="engine-card">
-            <span>Stage 1</span>
-            <h3>基础股票池粗筛</h3>
-            <p>只用上传表做当前池清洗、原因初拆、硬风险排除和候选导出；财务硬伤、重大违法、退市/正常样本会先被挡掉。</p>
-          </div>
-          <div class="engine-card">
-            <span>Stage 2</span>
-            <h3>公告链与研究数据回传</h3>
-            <p>只对“补公告候选”定向跑公告、规则、行情和软因子，避免全量抓公告浪费时间。</p>
-          </div>
-          <div class="engine-card">
-            <span>Stage 3</span>
-            <h3>双轨评分与复核分叉</h3>
-            <p>精筛阶段输出 Track A / Track B 分数、综合等级、预警触发、人工复核分叉和报告建议。</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="workflow-band research-path-band" aria-labelledby="pathTitle">
-        <div class="section-heading">
-          <p class="eyebrow">v0.6 研究路径</p>
-          <h2 id="pathTitle">每只股票都按同一条链路解释</h2>
-        </div>
-        <div class="path-grid" id="researchPath"></div>
-      </section>
-
-      <section class="work-grid">
-        <section class="panel table-panel" aria-labelledby="poolTitle">
-          <div class="section-heading row-heading">
+      <section class="visual-grid">
+        <article class="panel">
+          <div class="panel-head">
             <div>
-              <p class="eyebrow">全池筛选</p>
-              <h2 id="poolTitle">当前 ST/*ST 股票池</h2>
+              <p class="section-kicker">分层结果</p>
+              <h2>综合等级分布</h2>
+            </div>
+            <span id="gradeTotal" class="soft-pill">0 只</span>
+          </div>
+          <div id="gradeChart" class="grade-chart"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-kicker">双轨坐标</p>
+              <h2>Track A × Track B</h2>
+            </div>
+            <span class="soft-pill">规则修复 / 市场窗口</span>
+          </div>
+          <div id="scatterPlot" class="scatter-box"></div>
+        </article>
+      </section>
+
+      <section class="panel pipeline-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-kicker">研究链路</p>
+            <h2>A/B/C 输出如何进入页面</h2>
+          </div>
+        </div>
+        <div class="pipeline">
+          <div class="pipeline-step">
+            <span>Stage A</span>
+            <strong>基础池压缩</strong>
+            <p>剔除明显不适合样本，保留候选与排除理由。</p>
+          </div>
+          <div class="pipeline-step">
+            <span>Stage B</span>
+            <strong>公告证据链</strong>
+            <p>绑定当前警示周期、规则原因和官方 PDF 证据。</p>
+          </div>
+          <div class="pipeline-step">
+            <span>Stage C</span>
+            <strong>市场与研究合成</strong>
+            <p>输出 Track A / B、历史参照、复核影响和最终研究分层。</p>
+          </div>
+          <div class="pipeline-step">
+            <span>Web</span>
+            <strong>展示与复核</strong>
+            <p>只做呈现、排序、解释和报告，不负责联网抓取。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel table-panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-kicker">研究样本</p>
+              <h2>Stage C 候选列表</h2>
             </div>
             <div class="filters">
               <input id="searchInput" type="search" placeholder="输入代码或简称" />
-              <select id="poolFilter">
-                <option value="all">全部分类</option>
-                <option value="observe">基础观察池</option>
-                <option value="review">待人工复核池</option>
-                <option value="risk">风险池</option>
-                <option value="exclude">高风险排除池</option>
-                <option value="archive">非当前样本</option>
-              </select>
-              <select id="strategyFilter">
-                <option value="all">全部策略标签</option>
-                <option value="财务硬指标修复">财务硬指标修复</option>
-                <option value="司法重整节点">司法重整节点</option>
-                <option value="合规整改闭环">合规整改闭环</option>
-                <option value="重大违法风险观察">重大违法风险观察</option>
+              <select id="gradeFilter">
+                <option value="all">全部等级</option>
               </select>
             </div>
           </div>
@@ -131,44 +116,35 @@
                 <tr>
                   <th>代码</th>
                   <th>简称</th>
-                  <th>分层</th>
-                  <th>基础标签</th>
-                  <th>原因质量</th>
-                  <th>粗筛动作</th>
-                  <th>分数/等级</th>
-                  <th>数据状态</th>
+                  <th>等级</th>
+                  <th>综合分</th>
+                  <th>Track A</th>
+                  <th>Track B</th>
+                  <th>窗口</th>
+                  <th>复核</th>
                 </tr>
               </thead>
-              <tbody id="poolTable"></tbody>
+              <tbody id="stockRows"></tbody>
             </table>
           </div>
-        </section>
+        </article>
 
-        <section class="panel detail-panel" id="single-stock" aria-labelledby="detailTitle">
-          <div class="section-heading row-heading">
-            <div>
-              <p class="eyebrow">单股诊断</p>
-              <h2 id="detailTitle">样本研究卡</h2>
-            </div>
-            <select id="stockSelect" aria-label="选择股票"></select>
-          </div>
-          <div id="detailContent"></div>
-        </section>
+        <article class="panel detail-panel">
+          <div id="detailPanel" class="detail-content"></div>
+        </article>
       </section>
 
-      <section class="panel report-panel" aria-labelledby="reportTitle">
-        <div class="section-heading row-heading">
+      <section class="panel report-panel">
+        <div class="panel-head">
           <div>
-            <p class="eyebrow">PDF 报告预览</p>
-            <h2 id="reportTitle">单股研究报告结构</h2>
+            <p class="section-kicker">页面结论</p>
+            <h2>当前研究包摘要</h2>
           </div>
-          <button class="primary-button" id="printReportBtnBottom" type="button">导出 PDF</button>
         </div>
-        <div id="reportPreview" class="report-preview"></div>
+        <div id="reportSummary" class="report-summary"></div>
       </section>
     </main>
 
-    <script src="./data/current_pool.js?v=20260615v6"></script>
-    <script src="./main.js?v=20260615v6"></script>
+    <script src="./main.js?v=20260624-v7"></script>
   </body>
 </html>
