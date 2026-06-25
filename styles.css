@@ -603,6 +603,59 @@ tbody tr.selected {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.evidence-impact {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ead29a;
+  border-left: 4px solid var(--amber);
+  border-radius: 10px;
+  background: #fffaf0;
+}
+
+.evidence-impact.ok {
+  border-color: #b6d9ca;
+  border-left-color: var(--green);
+  background: #f2faf6;
+}
+
+.evidence-impact strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.evidence-impact p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.gap-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.gap-list span {
+  display: block;
+  padding: 0.65rem;
+  border: 1px solid rgba(183, 121, 31, 0.25);
+  border-radius: 8px;
+  background: #fff;
+  color: #6d4b15;
+  font-weight: 800;
+}
+
+.gap-list small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 .signal-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0.8rem 0 1rem;
@@ -741,6 +794,262 @@ tbody tr.selected {
   line-height: 1.75;
 }
 
+.research-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.research-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.research-block {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfdfc;
+}
+
+.research-block.compact {
+  margin-top: 0;
+}
+
+.executive-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #eff8f4, #f8fcfa);
+}
+
+.executive-block h3 {
+  font-size: 1.22rem;
+}
+
+.executive-block p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.confidence-card {
+  display: grid;
+  place-items: center;
+  min-height: 6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  text-align: center;
+}
+
+.confidence-card span,
+.final-view span,
+.metric-table span,
+.market-metric span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.confidence-card strong {
+  margin-top: 0.35rem;
+  color: var(--green);
+  font-size: 1.4rem;
+}
+
+.block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.fact-list,
+.timeline-item ul,
+.final-view ul {
+  margin: 0.55rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.fact-list li,
+.timeline-item li,
+.final-view li {
+  margin: 0.35rem 0;
+  line-height: 1.55;
+}
+
+.source-line {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.source-line a,
+.timeline-item a {
+  color: var(--green);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 0.85rem minmax(0, 1fr);
+  gap: 0.65rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.check-row:last-child {
+  border-bottom: 0;
+}
+
+.check-row p,
+.check-row small {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.check-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+.check-dot.ok {
+  background: var(--green);
+}
+
+.check-dot.active {
+  background: var(--blue);
+}
+
+.check-dot.bad {
+  background: var(--red);
+}
+
+.check-dot.pending {
+  background: var(--amber);
+}
+
+.timeline-item {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline-item:last-child {
+  border-bottom: 0;
+}
+
+.timeline-item span,
+.timeline-item em {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
+.timeline-item strong {
+  display: block;
+  margin: 0.25rem 0;
+  line-height: 1.45;
+}
+
+.metric-table,
+.market-metrics {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.metric-table {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metric-table > div,
+.market-metric {
+  min-height: 5.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.metric-table strong,
+.market-metric strong {
+  display: block;
+  margin: 0.35rem 0;
+  font-size: 1.12rem;
+}
+
+.metric-table small,
+.market-metric small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.market-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 0.85rem;
+}
+
+.missing-box {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border-left: 4px solid var(--amber);
+  border-radius: 8px;
+  background: var(--amber-soft);
+  color: #6d4b15;
+  line-height: 1.6;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.tag-row span {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.final-view {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr 1.2fr;
+  gap: 0.8rem;
+}
+
+.final-view > div {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.final-view strong {
+  display: block;
+  margin: 0.4rem 0;
+  font-size: 1.12rem;
+}
+
+.empty-state.small {
+  min-height: 4rem;
+  place-items: start;
+  text-align: left;
+  line-height: 1.6;
+}
+
 .report-summary {
   padding: 0 1.4rem 1.4rem;
 }
@@ -820,6 +1129,8 @@ tbody tr.selected {
   .health-strip,
   .metric-grid,
   .pipeline,
+  .market-metrics,
+  .gap-list,
   .top-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -841,12 +1152,19 @@ tbody tr.selected {
   .health-strip,
   .metric-grid,
   .pipeline,
-  .score-grid,
-  .signal-grid,
-  .review-list,
-  .case-columns,
-  .subsection.split,
-  .top-list {
+    .score-grid,
+    .signal-grid,
+    .review-list,
+    .research-grid.two,
+    .evidence-impact,
+    .gap-list,
+    .metric-table,
+    .market-metrics,
+    .final-view,
+    .executive-block,
+    .case-columns,
+    .subsection.split,
+    .top-list {
     grid-template-columns: 1fr;
   }
 
