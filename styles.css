@@ -356,6 +356,7 @@ h3 {
   position: relative;
   height: 22rem;
   margin: 0 1.4rem 1.4rem;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -442,8 +443,8 @@ h3 {
 }
 
 .quadrant.q1 {
-  right: 0.8rem;
-  top: 0.8rem;
+  right: 1rem;
+  top: 0.55rem;
 }
 
 .quadrant.q2 {
@@ -457,8 +458,8 @@ h3 {
 }
 
 .quadrant.q4 {
-  right: 0.8rem;
-  bottom: 2.2rem;
+  right: 1rem;
+  bottom: 0.9rem;
 }
 
 .pipeline-panel,

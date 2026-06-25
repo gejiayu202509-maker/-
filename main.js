@@ -506,8 +506,8 @@ function renderScatter() {
     return;
   }
   const points = state.records.map((item) => {
-    const x = clamp(item.trackA, 0, 100);
-    const y = clamp(item.trackB, 0, 100);
+    const x = 8 + clamp(item.trackA, 0, 100) * 0.84;
+    const y = 8 + clamp(item.trackB, 0, 100) * 0.84;
     return `
       <button class="scatter-point ${gradeClass(item.grade)}" style="left:${x}%; bottom:${y}%"
         title="${item.code} ${item.name} · TrackA ${item.trackA} / TrackB ${item.trackB}"
@@ -689,7 +689,7 @@ function renderResearchReport(item) {
 
     <section class="research-grid two">
       ${renderAnnouncementFacts(report)}
-      ${renderFinancialRepair(report)}
+      ${renderRulePathEvidence(report)}
     </section>
 
     <section class="research-block">
@@ -778,13 +778,19 @@ function renderAnnouncementFacts(report) {
   `;
 }
 
-function renderFinancialRepair(report) {
+function renderRulePathEvidence(report) {
   const financial = report.financial_repair || {};
   const metrics = financial.metrics || [];
+  const reasonText = [
+    report.why_st?.reason_type,
+    report.why_st?.reason_facts,
+    report.final_view?.main_reasons,
+  ].flat().filter(Boolean).join(" ");
+  const title = pathEvidenceTitle(reasonText);
   return `
     <div class="research-block compact">
-      <p class="section-kicker">财务修复证据</p>
-      <h3>${financial.snapshot_date ? `快照：${financial.snapshot_date}` : "关键财务指标"}</h3>
+      <p class="section-kicker">${title.kicker}</p>
+      <h3>${financial.snapshot_date ? `数据日期：${financial.snapshot_date}` : title.heading}</h3>
       ${metrics.length ? `<div class="metric-table">${metrics.map((row) => `
         <div>
           <span>${row.name}</span>
@@ -795,6 +801,25 @@ function renderFinancialRepair(report) {
       ${asArray(financial.quality_flags).length ? `<div class="tag-row">${asArray(financial.quality_flags).map((flag) => `<span>${flag}</span>`).join("")}</div>` : ""}
     </div>
   `;
+}
+
+function pathEvidenceTitle(text = "") {
+  if (/重整|破产|债权人|法院|投资人/.test(text)) {
+    return { kicker: "重整路径证据", heading: "重整节点与财务影响" };
+  }
+  if (/内控|合规|整改|规范/.test(text)) {
+    return { kicker: "内控/合规证据", heading: "整改进度与第三方确认" };
+  }
+  if (/资金占用|担保|违规担保|清偿/.test(text)) {
+    return { kicker: "占用/担保证据", heading: "清偿或解除进度" };
+  }
+  if (/重大违法|立案|处罚|行政处罚|财务造假/.test(text)) {
+    return { kicker: "重大风险证据", heading: "处罚落地与退市风险判断" };
+  }
+  if (/审计|非标|保留|无法表示|否定意见/.test(text)) {
+    return { kicker: "审计意见证据", heading: "审计意见与非标事项变化" };
+  }
+  return { kicker: "财务硬指标证据", heading: "收入、利润、净资产等关键指标" };
 }
 
 function renderMarketExplanation(report) {
