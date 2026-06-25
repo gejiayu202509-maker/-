@@ -6,12 +6,14 @@ const state = {
   sourceNames: [],
 };
 
-const gradeOrder = ["A+", "A", "A-", "B", "C", "D"];
+const gradeOrder = ["A+", "A", "A-", "B+", "B", "B-", "C", "D"];
 const gradeLabels = {
   "A+": "核心机会池",
   A: "重点机会",
   "A-": "高确定性但需看拥挤",
+  "B+": "修复观察-优先",
   B: "修复观察",
+  "B-": "备选观察",
   C: "谨慎复核",
   D: "高风险排除",
 };
@@ -86,6 +88,18 @@ function normalizeBundleRecord(item) {
   const grade = cleanGrade(final.class || final.grade || summary["综合等级"] || summary["等级"]);
   const marketWindows = trackB.market_windows || item.market_windows || [];
   const researchReport = item.research_report || buildResearchReportFallback(item, summary);
+  const absoluteGrade = cleanOptionalGrade(
+    final.absolute_class_before_batch_rebalance ||
+    final.absolute_class ||
+    summary["绝对等级"] ||
+    summary["原始等级"]
+  );
+  const batchNote =
+    final.batch_relative_note ||
+    researchReport?.executive_summary?.batch_relative_note ||
+    item.research_report?.batch_relative_note ||
+    summary["批内分层说明"] ||
+    "";
 
   return {
     raw: item,
@@ -93,6 +107,8 @@ function normalizeBundleRecord(item) {
     name: stock.name || item.name || summary["股票简称"] || summary["简称"] || "--",
     industry: stock.industry || item.industry || summary["所属行业"] || "--",
     grade,
+    absoluteGrade,
+    batchNote,
     label: final.research_label || gradeLabels[grade] || summary["研究标签"] || "研究样本",
     finalScore: numberFrom(final.score ?? final.final_score ?? summary["综合分"] ?? summary["最终分数"], 0),
     trackA: numberFrom(trackA.score ?? trackA.track_a_score ?? summary["TrackA分"], 0),
@@ -118,12 +134,15 @@ function normalizeBundleRecord(item) {
 
 function normalizeSummaryRecord(row) {
   const grade = cleanGrade(row["综合等级"] || row["等级"]);
+  const absoluteGrade = cleanOptionalGrade(row["绝对等级"] || row["原始等级"]);
   return {
     raw: row,
     code: normalizeCode(row["股票代码"] || row["代码"]),
     name: row["股票简称"] || row["简称"] || "--",
     industry: row["所属行业"] || "--",
     grade,
+    absoluteGrade,
+    batchNote: row["批内分层说明"] || "",
     label: row["研究标签"] || gradeLabels[grade] || "研究样本",
     finalScore: numberFrom(row["综合分"] || row["最终分数"], 0),
     trackA: numberFrom(row["TrackA分"], 0),
@@ -571,9 +590,25 @@ function renderDetail() {
       ${scoreCard("Track B 市场窗口与定价", item.trackB, item.trackBWindow, `反映度：${item.pricedIn}`)}
     </div>
 
+    ${renderGradeAdjustment(item)}
     ${renderEvidenceImpact(item)}
 
     ${renderResearchReport(item)}
+  `;
+}
+
+function renderGradeAdjustment(item) {
+  const changed = item.absoluteGrade && item.absoluteGrade !== item.grade;
+  const note = item.batchNote || (changed ? `原始等级为 ${item.absoluteGrade}，批内相对排序后显示为 ${item.grade}。` : "");
+  if (!changed && !note) return "";
+  return `
+    <section class="grade-adjustment">
+      <div>
+        <strong>等级口径：${changed ? `${item.absoluteGrade} → ${item.grade}` : item.grade}</strong>
+        <p>${note}</p>
+      </div>
+      <span>批内相对分层</span>
+    </section>
   `;
 }
 
@@ -824,12 +859,15 @@ function renderFinalView(report, item) {
   const reasons = asArray(finalView.main_reasons);
   const next = asArray(finalView.next_tracking);
   const caps = asArray(finalView.cap_reasons || item.capReasons);
+  const changed = item.absoluteGrade && item.absoluteGrade !== item.grade;
   return `
     <div class="final-view">
       <div>
         <span>最终分层</span>
         <strong>${finalView.grade || item.grade} · ${formatScore(finalView.score ?? item.finalScore)}分</strong>
         <p>置信度：${finalView.confidence || item.benchmarkConfidence || "limited"}</p>
+        ${changed ? `<p>原始等级：${item.absoluteGrade}；批内分层：${item.grade}</p>` : ""}
+        ${item.batchNote ? `<p>${item.batchNote}</p>` : ""}
       </div>
       <div>
         <span>主要依据</span>
@@ -1082,8 +1120,15 @@ function historyStatus(item) {
 function cleanGrade(value) {
   const raw = String(value || "C").trim().toUpperCase();
   if (raw === "APLUS" || raw === "A＋") return "A+";
+  if (raw === "BPLUS" || raw === "B＋") return "B+";
   if (gradeOrder.includes(raw)) return raw;
   return "C";
+}
+
+function cleanOptionalGrade(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return cleanGrade(text);
 }
 
 function gradeClass(grade) {
