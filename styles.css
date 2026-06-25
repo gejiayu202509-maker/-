@@ -382,9 +382,27 @@ h3 {
 .quadrant {
   position: absolute;
   color: var(--muted);
-  font-size: 0.78rem;
   font-weight: 700;
   pointer-events: none;
+}
+
+.axis-label {
+  font-size: 0.74rem;
+  line-height: 1.2;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(244, 247, 245, 0.92);
+}
+
+.quadrant {
+  font-size: 0.74rem;
+  line-height: 1.2;
+  max-width: 9rem;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid rgba(216, 226, 223, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
 }
 
 .axis-label.x {
@@ -404,7 +422,7 @@ h3 {
 
 .quadrant.q2 {
   left: 0.8rem;
-  top: 0.8rem;
+  top: 2.45rem;
 }
 
 .quadrant.q3 {
@@ -414,7 +432,7 @@ h3 {
 
 .quadrant.q4 {
   right: 0.8rem;
-  bottom: 0.8rem;
+  bottom: 2.2rem;
 }
 
 .pipeline-panel,

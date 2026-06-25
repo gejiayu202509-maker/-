@@ -496,12 +496,12 @@ function renderScatter() {
     `;
   }).join("");
   $("scatterPlot").innerHTML = `
-    <div class="axis-label x">Track A 规则修复</div>
-    <div class="axis-label y">Track B 市场窗口</div>
-    <div class="quadrant q1">高修复 / 高窗口</div>
-    <div class="quadrant q2">高窗口待规则</div>
-    <div class="quadrant q3">低信号</div>
-    <div class="quadrant q4">高修复但拥挤</div>
+          <div class="axis-label x">Track A 规则修复</div>
+          <div class="axis-label y">Track B 市场窗口</div>
+          <div class="quadrant q1">高修复 / 高窗口</div>
+          <div class="quadrant q2">高窗口 / 待规则</div>
+          <div class="quadrant q3">低信号</div>
+          <div class="quadrant q4">高修复 / 拥挤</div>
     ${points}
   `;
   $("scatterPlot").querySelectorAll(".scatter-point").forEach((button) => {
